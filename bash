@@ -1,1 +1,0 @@
-nano setup-telefonica-predictor.sh
