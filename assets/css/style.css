@@ -1,0 +1,73 @@
+:root {
+    --bullish-color: #22c55e;
+    --bearish-color: #ef4444;
+    --neutral-color: #6b7280;
+}
+
+body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+}
+
+.chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+}
+
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.card-header {
+    font-weight: 600;
+}
+
+.signal-ENTRY {
+    background-color: var(--bullish-color);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-weight: bold;
+}
+
+.signal-EXIT {
+    background-color: var(--bearish-color);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-weight: bold;
+}
+
+.price-up {
+    color: var(--bullish-color);
+}
+
+.price-down {
+    color: var(--bearish-color);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+#gaugeChart {
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+    .chart-container {
+        height: 300px;
+    }
+    
+    #gaugeChart {
+        max-width: 200px;
+    }
+}
