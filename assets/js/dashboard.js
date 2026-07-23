@@ -1,12 +1,13 @@
 /**
- * Dashboard - Main controller
+ * Dashboard - Main Controller
  * GitHub: edthedog-debug/telefonica-stock-predictor
- * UPDATED: Recalculates everything on date change
+ * FIXED: Everything updates on date range change
  */
 class Dashboard {
     constructor() {
         this.dataService = new DataService();
         this.charts = new StockCharts();
+        this.updateTimeout = null;
         this.init();
     }
 
@@ -26,26 +27,28 @@ class Dashboard {
     }
 
     bindEvents() {
+        // Run Analysis button
         document.getElementById('updateBtn').addEventListener('click', async () => {
+            console.log('🔄 Run Analysis clicked');
             await this.loadAllData();
         });
         
-        // Also update when changing dates
-        document.getElementById('startDate').addEventListener('change', async () => {
-            await this.loadAllData();
+        // Auto-update on any filter change
+        const filterElements = ['startDate', 'endDate', 'forecastDays', 'simulations'];
+        
+        filterElements.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', () => {
+                    console.log('🔔 Filter changed: ' + id + ' = ' + el.value);
+                    // Debounce: wait 300ms before updating
+                    clearTimeout(this.updateTimeout);
+                    this.updateTimeout = setTimeout(() => this.loadAllData(), 300);
+                });
+            }
         });
         
-        document.getElementById('endDate').addEventListener('change', async () => {
-            await this.loadAllData();
-        });
-        
-        document.getElementById('forecastDays').addEventListener('change', async () => {
-            await this.loadAllData();
-        });
-        
-        document.getElementById('simulations').addEventListener('change', async () => {
-            await this.loadAllData();
-        });
+        console.log('✅ Events bound - Dashboard ready');
     }
 
     async loadAllData() {
@@ -54,70 +57,102 @@ class Dashboard {
             
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
-            const forecastDays = parseInt(document.getElementById('forecastDays').value);
-            const simulations = parseInt(document.getElementById('simulations').value);
+            const forecastDays = parseInt(document.getElementById('forecastDays').value) || 30;
+            const simulations = parseInt(document.getElementById('simulations').value) || 1000;
             
-            // Get filtered historical data
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('🔄 LOADING DATA');
+            console.log('📅 Dates: ' + startDate + ' to ' + endDate);
+            console.log('🔮 Forecast: ' + forecastDays + ' days');
+            console.log('🎲 Simulations: ' + simulations);
+            
+            // Step 1: Fetch filtered historical data
             const historicalData = await this.dataService.fetchHistoricalData(startDate, endDate);
+            console.log('✅ Step 1: ' + historicalData.length + ' historical records loaded');
             
-            // Run Monte Carlo with filtered data
+            // Step 2: Run Monte Carlo with filtered data
             const monteCarloData = await this.dataService.runMonteCarlo(forecastDays, simulations);
+            console.log('✅ Step 2: Monte Carlo complete');
             
-            // Get signals based on filtered data
+            // Step 3: Generate signals from filtered data
             const signalsData = await this.dataService.fetchSignals();
+            console.log('✅ Step 3: ' + signalsData.historical_signals.length + ' signals generated');
             
-            // Update everything
-            await this.updateDashboard(historicalData, monteCarloData, signalsData);
+            // Step 4: Update ALL visualizations
+            this.updateDashboard(historicalData, monteCarloData, signalsData);
+            console.log('✅ Step 4: Dashboard updated');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            
             this.showLoading(false);
             
         } catch (error) {
-            console.error('Error:', error);
+            console.error('❌ Error loading data:', error);
             this.showLoading(false);
         }
     }
 
-    async updateDashboard(historicalData, monteCarloData, signalsData) {
-        // Update main chart
-        this.charts.createMainChart(historicalData, monteCarloData.forecast);
+    updateDashboard(historicalData, monteCarloData, signalsData) {
+        // Update main price chart
+        if (historicalData.length > 0 && monteCarloData.forecast.confidence_intervals.length > 0) {
+            this.charts.createMainChart(historicalData, monteCarloData.forecast);
+        }
         
-        // Update gauge with new signal
+        // Update trend gauge
         this.charts.createGaugeChart(signalsData.current_signal.bullish_percentage);
         
-        // Update statistics with filtered data
+        // Update statistics panel
         this.updateStatistics(monteCarloData, historicalData);
         
         // Update signals table
         this.updateSignalsTable(signalsData.historical_signals);
         
-        // Update signal display
+        // Update current signal text
         this.updateSignalDisplay(signalsData.current_signal);
         
-        // Update date range info
-        this.updateDateInfo(historicalData);
+        // Show data range info
+        this.showRangeInfo(historicalData);
     }
 
     updateStatistics(monteCarloData, historicalData) {
         const stats = monteCarloData.forecast.final_price_stats;
         const lastPrice = historicalData.length > 0 ? historicalData[historicalData.length - 1].close : 0;
+        const firstPrice = historicalData.length > 0 ? historicalData[0].close : 0;
         
-        document.getElementById('currentPrice').textContent = lastPrice > 0 ? '€' + lastPrice.toFixed(4) : '-';
-        document.getElementById('medianPrice').textContent = stats.median > 0 ? '€' + stats.median.toFixed(4) : '-';
-        document.getElementById('meanPrice').textContent = stats.mean > 0 ? '€' + stats.mean.toFixed(4) : '-';
-        document.getElementById('confidenceInterval').textContent = stats.p5 > 0 ? '€' + stats.p5.toFixed(4) + ' - €' + stats.p95.toFixed(4) : '-';
-        document.getElementById('volatility').textContent = monteCarloData.volatility > 0 ? (monteCarloData.volatility * 100).toFixed(2) + '%' : '-';
-        document.getElementById('expectedReturn').textContent = monteCarloData.mean_return !== 0 ? (monteCarloData.mean_return * 100).toFixed(4) + '%' : '-';
+        // Current price
+        document.getElementById('currentPrice').textContent = lastPrice ? '€' + lastPrice.toFixed(4) : '-';
         
-        // Distribution
-        if (monteCarloData.forecast.simulation_paths.length > 0) {
+        // Color code: green if up, red if down
+        const priceEl = document.getElementById('currentPrice');
+        if (historicalData.length > 1) {
+            const prevPrice = historicalData[historicalData.length - 2].close;
+            priceEl.className = 'text-end ' + (lastPrice >= prevPrice ? 'price-up' : 'price-down');
+        }
+        
+        // Forecast stats
+        document.getElementById('medianPrice').textContent = stats.median ? '€' + stats.median.toFixed(4) : '-';
+        document.getElementById('meanPrice').textContent = stats.mean ? '€' + stats.mean.toFixed(4) : '-';
+        document.getElementById('confidenceInterval').textContent = stats.p5 ? '€' + stats.p5.toFixed(4) + ' - €' + stats.p95.toFixed(4) : '-';
+        document.getElementById('volatility').textContent = monteCarloData.volatility ? (monteCarloData.volatility * 100).toFixed(2) + '%' : '-';
+        document.getElementById('expectedReturn').textContent = monteCarloData.mean_return ? (monteCarloData.mean_return * 100).toFixed(4) + '%' : '-';
+        
+        // Distribution probabilities
+        if (monteCarloData.forecast.simulation_paths.length > 0 && lastPrice > 0) {
             const finalPrices = monteCarloData.forecast.simulation_paths.map(p => p[p.length - 1]);
             const bearish = finalPrices.filter(p => p < lastPrice * 0.98).length;
             const neutral = finalPrices.filter(p => p >= lastPrice * 0.98 && p <= lastPrice * 1.02).length;
             const bullish = finalPrices.filter(p => p > lastPrice * 1.02).length;
             const total = finalPrices.length;
             
-            document.getElementById('bearishProb').textContent = total > 0 ? ((bearish/total)*100).toFixed(1) + '%' : '-';
-            document.getElementById('neutralProb').textContent = total > 0 ? ((neutral/total)*100).toFixed(1) + '%' : '-';
-            document.getElementById('bullishProb').textContent = total > 0 ? ((bullish/total)*100).toFixed(1) + '%' : '-';
+            document.getElementById('bearishProb').textContent = ((bearish/total)*100).toFixed(1) + '%';
+            document.getElementById('neutralProb').textContent = ((neutral/total)*100).toFixed(1) + '%';
+            document.getElementById('bullishProb').textContent = ((bullish/total)*100).toFixed(1) + '%';
+        }
+        
+        // Overall change in selected period
+        if (firstPrice && lastPrice && historicalData.length > 1) {
+            const changePct = ((lastPrice - firstPrice) / firstPrice * 100).toFixed(2);
+            document.getElementById('priceRange').textContent = changePct + '%';
+            document.getElementById('priceRange').className = 'text-end ' + (changePct >= 0 ? 'price-up' : 'price-down');
         }
     }
 
@@ -125,7 +160,7 @@ class Dashboard {
         const tbody = document.getElementById('signalsBody');
         
         if (!signals || signals.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No signals in selected date range</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">⚠️ No signals in selected date range</td></tr>';
             return;
         }
         
@@ -139,30 +174,44 @@ class Dashboard {
                 '<td>€' + s.sma20 + '</td>' +
             '</tr>'
         ).join('');
+        
+        console.log('📋 Signals table updated: ' + signals.length + ' signals');
     }
 
     updateSignalDisplay(currentSignal) {
         const signalText = document.getElementById('signalText');
         const signalDetails = document.getElementById('signalDetails');
         
-        signalText.textContent = currentSignal.signal.replace('_', ' ');
+        signalText.textContent = currentSignal.signal.replace(/_/g, ' ');
         
+        // Color based on signal
         let colorClass = 'text-warning';
         if (currentSignal.signal.includes('BUY')) colorClass = 'text-success';
         if (currentSignal.signal.includes('SELL')) colorClass = 'text-danger';
         
         signalText.className = 'display-6 fw-bold ' + colorClass;
+        
         signalDetails.innerHTML = 
-            'Bullish: <strong>' + currentSignal.bullish_percentage + '%</strong> | ' +
-            'Bearish: <strong>' + currentSignal.bearish_percentage + '%</strong> | ' +
-            'Confidence: <strong>' + currentSignal.confidence + '</strong>';
+            '🟢 Bullish: <strong>' + currentSignal.bullish_percentage + '%</strong> | ' +
+            '🔴 Bearish: <strong>' + currentSignal.bearish_percentage + '%</strong> | ' +
+            '📊 Confidence: <strong>' + currentSignal.confidence + '</strong>';
+        
+        console.log('📊 Signal display: ' + currentSignal.signal + ' (' + currentSignal.bullish_percentage + '% bullish)');
     }
 
-    updateDateInfo(historicalData) {
+    showRangeInfo(historicalData) {
         if (historicalData.length > 0) {
             const firstDate = historicalData[0].date;
             const lastDate = historicalData[historicalData.length - 1].date;
-            console.log('📅 Showing data from ' + firstDate + ' to ' + lastDate + ' (' + historicalData.length + ' points)');
+            const firstPrice = historicalData[0].close;
+            const lastPrice = historicalData[historicalData.length - 1].close;
+            const change = ((lastPrice - firstPrice) / firstPrice * 100).toFixed(2);
+            
+            console.log('📅 Showing: ' + firstDate + ' → ' + lastDate);
+            console.log('💰 Price: €' + firstPrice.toFixed(4) + ' → €' + lastPrice.toFixed(4) + ' (' + change + '%)');
+            console.log('📊 Records: ' + historicalData.length);
+        } else {
+            console.warn('⚠️ No data in selected range');
         }
     }
 
@@ -170,7 +219,7 @@ class Dashboard {
         const btn = document.getElementById('updateBtn');
         if (show) {
             btn.disabled = true;
-            btn.innerHTML = '⏳ Running...';
+            btn.innerHTML = '⏳ Running Analysis...';
         } else {
             btn.disabled = false;
             btn.innerHTML = '🔄 Run Analysis';
@@ -178,6 +227,8 @@ class Dashboard {
     }
 }
 
+// Start dashboard when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new Dashboard();
+    console.log('🚀 Starting Telefonica Stock Predictor...');
+    window.dashboard = new Dashboard();
 });
