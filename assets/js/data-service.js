@@ -1,11 +1,12 @@
 /**
- * DataService - Monte Carlo Engine + Signals + MACD + Bollinger
+ * DataService - Monte Carlo + Neural Network + Signals + Backtesting
  * GitHub: edthedog-debug/telefonica-stock-predictor
- * v2.0 - Added MACD, Bollinger Bands, Backtesting
+ * v3.0 - Added Machine Learning predictions
  */
 class DataService {
     constructor() {
         this.cache = {};
+        this.neuralNetwork = new NeuralNetwork();
     }
 
     async fetchHistoricalData(startDate, endDate) {
@@ -90,6 +91,38 @@ class DataService {
                 confidence_intervals: confidenceIntervals, simulation_paths: paths } };
     }
 
+    async runNeuralNetwork(days = 30) {
+        const data = this.cache.filteredData || [];
+        if (data.length < 20) {
+            console.warn('⚠️ Not enough data for neural network');
+            return null;
+        }
+        
+        const prices = data.map(d => d.close);
+        
+        console.log('🧠 Training neural network...');
+        const trained = this.neuralNetwork.train(prices, 500, 0.001);
+        
+        if (!trained) {
+            console.warn('⚠️ Neural network training failed');
+            return null;
+        }
+        
+        const predictions = this.neuralNetwork.predict(prices, days);
+        
+        if (!predictions) return null;
+        
+        console.log('🤖 ML Prediction complete: ' + predictions.length + ' days');
+        console.log('🤖 ML Last prediction: €' + predictions[predictions.length - 1].toFixed(4));
+        
+        return {
+            predictions: predictions,
+            lastPrice: prices[prices.length - 1],
+            days: days,
+            trend: predictions[predictions.length - 1] > prices[prices.length - 1] ? 'BULLISH' : 'BEARISH'
+        };
+    }
+
     async fetchSignals() {
         const data = this.cache.filteredData || [];
         if (data.length < 50) {
@@ -112,7 +145,6 @@ class DataService {
         for (let i = 50; i < prices.length; i++) {
             let signal = null;
             
-            // Golden/Death Cross
             if (sma20[i] && sma50[i] && sma20[i-1] && sma50[i-1]) {
                 if (sma20[i] > sma50[i] && sma20[i-1] <= sma50[i-1]) {
                     signal = { date: dates[i], type: 'ENTRY', price: prices[i].toFixed(4), reason: 'Golden Cross', rsi: rsi[i]?.toFixed(2) || '-', sma20: sma20[i].toFixed(4) };
@@ -121,7 +153,6 @@ class DataService {
                 }
             }
             
-            // RSI
             if (rsi[i] && rsi[i-1] && !signal) {
                 if (rsi[i] < 30 && rsi[i-1] >= 30) {
                     signal = { date: dates[i], type: 'ENTRY', price: prices[i].toFixed(4), reason: 'RSI Oversold', rsi: rsi[i].toFixed(2), sma20: sma20[i]?.toFixed(4) || '-' };
@@ -130,7 +161,6 @@ class DataService {
                 }
             }
             
-            // MACD
             if (macd.macdLine[i] && macd.signalLine[i] && macd.macdLine[i-1] && macd.signalLine[i-1] && !signal) {
                 if (macd.macdLine[i] > macd.signalLine[i] && macd.macdLine[i-1] <= macd.signalLine[i-1]) {
                     signal = { date: dates[i], type: 'ENTRY', price: prices[i].toFixed(4), reason: 'MACD Bullish Cross', rsi: rsi[i]?.toFixed(2) || '-', sma20: sma20[i]?.toFixed(4) || '-' };
@@ -139,7 +169,6 @@ class DataService {
                 }
             }
             
-            // Bollinger
             if (bollinger.upper[i] && bollinger.lower[i] && !signal) {
                 if (prices[i] < bollinger.lower[i]) {
                     signal = { date: dates[i], type: 'ENTRY', price: prices[i].toFixed(4), reason: 'Bollinger Lower Band', rsi: rsi[i]?.toFixed(2) || '-', sma20: sma20[i]?.toFixed(4) || '-' };
@@ -151,7 +180,6 @@ class DataService {
             if (signal) historicalSignals.push(signal);
         }
         
-        // Current signal
         const last = prices.length - 1;
         let bull = 0, bear = 0;
         if (sma20[last] && sma50[last]) sma20[last] > sma50[last] ? bull += 2 : bear += 2;
@@ -194,13 +222,7 @@ class DataService {
         const prices = data.map(d => d.close);
         const dates = data.map(d => d.date);
         
-        let capital = 10000;
-        let shares = 0;
-        let trades = [];
-        let inPosition = false;
-        let entryPrice = 0;
-        let entryDate = '';
-        
+        let capital = 10000, shares = 0, trades = [], inPosition = false, entryPrice = 0, entryDate = '';
         const allSignals = signals.historical_signals;
         
         for (let i = 0; i < allSignals.length; i++) {
@@ -223,7 +245,6 @@ class DataService {
             }
         }
         
-        // Close open position at last price
         if (inPosition) {
             const lastPrice = prices[prices.length - 1];
             capital += shares * lastPrice;
@@ -236,11 +257,8 @@ class DataService {
         const winTrades = trades.filter(t => parseFloat(t.profit) > 0).length;
         
         return {
-            initialCapital: 10000,
-            finalCapital: capital.toFixed(2),
-            totalReturn: totalReturn,
-            totalTrades: trades.length,
-            winningTrades: winTrades,
+            initialCapital: 10000, finalCapital: capital.toFixed(2), totalReturn,
+            totalTrades: trades.length, winningTrades: winTrades,
             winRate: trades.length > 0 ? ((winTrades / trades.length) * 100).toFixed(1) : 0,
             trades: trades.slice(-10)
         };
@@ -249,16 +267,11 @@ class DataService {
     calculateMACD(prices, fast = 12, slow = 26, signal = 9) {
         const emaFast = this.calculateEMA(prices, fast);
         const emaSlow = this.calculateEMA(prices, slow);
-        const macdLine = [];
-        const signalLine = [];
-        const histogram = [];
+        const macdLine = [], signalLine = [], histogram = [];
         
         for (let i = 0; i < prices.length; i++) {
-            if (emaFast[i] !== null && emaSlow[i] !== null) {
-                macdLine.push(emaFast[i] - emaSlow[i]);
-            } else {
-                macdLine.push(null);
-            }
+            if (emaFast[i] !== null && emaSlow[i] !== null) macdLine.push(emaFast[i] - emaSlow[i]);
+            else macdLine.push(null);
         }
         
         const validMACD = macdLine.filter(v => v !== null);
@@ -271,8 +284,7 @@ class DataService {
                 histogram.push(macdLine[i] - signalEMA[sigIdx]);
                 sigIdx++;
             } else {
-                signalLine.push(null);
-                histogram.push(null);
+                signalLine.push(null); histogram.push(null);
             }
         }
         
@@ -300,11 +312,10 @@ class DataService {
     calculateEMA(prices, period) {
         const ema = [];
         const multiplier = 2 / (period + 1);
-        let firstValid = -1;
         
         for (let i = 0; i < prices.length; i++) {
             if (prices[i] === null || prices[i] === undefined) { ema.push(null); continue; }
-            if (firstValid === -1) { firstValid = i; ema.push(prices[i]); continue; }
+            if (ema.length === 0) { ema.push(prices[i]); continue; }
             ema.push((prices[i] - ema[ema.length - 1]) * multiplier + ema[ema.length - 1]);
         }
         return ema;
@@ -313,7 +324,7 @@ class DataService {
     calculateSMA(prices, period) {
         const sma = [];
         for (let i = 0; i < prices.length; i++) {
-            if (i < period - 1) { sma.push(null); }
+            if (i < period - 1) sma.push(null);
             else { let sum = 0; for (let j = i - period + 1; j <= i; j++) sum += prices[j]; sma.push(sum / period); }
         }
         return sma;
