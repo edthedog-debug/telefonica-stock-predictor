@@ -18,43 +18,61 @@ body {
 .card {
     border-radius: 15px;
     overflow: hidden;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
 }
 
 .card-header {
     font-weight: 600;
+    letter-spacing: 0.5px;
 }
 
 .signal-ENTRY {
     background-color: var(--bullish-color);
     color: white;
-    padding: 2px 10px;
-    border-radius: 12px;
+    padding: 3px 12px;
+    border-radius: 15px;
     font-weight: bold;
+    font-size: 0.85em;
+    animation: pulse-green 2s infinite;
 }
 
 .signal-EXIT {
     background-color: var(--bearish-color);
     color: white;
-    padding: 2px 10px;
-    border-radius: 12px;
+    padding: 3px 12px;
+    border-radius: 15px;
     font-weight: bold;
+    font-size: 0.85em;
+    animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-green {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+@keyframes pulse-red {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 
 .price-up {
-    color: var(--bullish-color);
+    color: var(--bullish-color) !important;
+    font-weight: bold;
 }
 
 .price-down {
-    color: var(--bearish-color);
+    color: var(--bearish-color) !important;
+    font-weight: bold;
 }
 
 .table-hover tbody tr:hover {
-    background-color: rgba(13, 110, 253, 0.1);
+    background-color: rgba(13, 110, 253, 0.08);
 }
 
 #gaugeChart {
@@ -62,12 +80,71 @@ body {
     margin: 0 auto;
 }
 
+#macdChartContainer {
+    background: #fafafa;
+    border-radius: 8px;
+    padding: 5px;
+}
+
+.badge-ENTRY {
+    background-color: var(--bullish-color) !important;
+}
+
+.badge-EXIT {
+    background-color: var(--bearish-color) !important;
+}
+
+/* Backtesting section */
+#backtestResults h4 {
+    font-size: 1.4rem;
+}
+
+#backtestResults .col-md-3 {
+    border-right: 1px solid #dee2e6;
+    padding: 15px;
+}
+
+#backtestResults .col-md-3:last-child {
+    border-right: none;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
     .chart-container {
-        height: 300px;
+        height: 280px;
     }
     
     #gaugeChart {
         max-width: 200px;
+    }
+    
+    #backtestResults .col-md-3 {
+        border-right: none;
+        border-bottom: 1px solid #dee2e6;
+        padding: 10px;
+    }
+    
+    #backtestResults h4 {
+        font-size: 1.1rem;
     }
 }
