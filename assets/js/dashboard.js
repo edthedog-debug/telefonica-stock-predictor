@@ -1,172 +1,150 @@
-/**
- * Dashboard - Main Controller v3.0
- * GitHub: edthedog-debug/telefonica-stock-predictor
- * Added: Neural Network comparison
- */
-class Dashboard {
-    constructor() {
-        this.dataService = new DataService();
-        this.charts = new StockCharts();
-        this.updateTimeout = null;
-        this.init();
+class ChartManager {
+  constructor() {
+    this.mainChart = null;
+    this.trendChart = null;
+  }
+
+  renderMainChart(canvasId, historicalData, monteCarloResults) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    if (this.mainChart) {
+      this.mainChart.destroy();
     }
 
-    async init() {
-        this.setDefaultDates();
-        this.bindEvents();
-        await this.loadAllData();
+    const labels = historicalData.map(d => d.date);
+    const closePrices = historicalData.map(d => d.close);
+    const upperBands = historicalData.map(d => d.upper);
+    const lowerBands = historicalData.map(d => d.lower);
+    const sma = historicalData.map(d => d.sma);
+
+    // Fechas para la predicción
+    const lastDate = new Date(historicalData[historicalData.length - 1].date);
+    const forecastLabels = [...labels];
+    
+    for (let i = 1; i < monteCarloResults.medianPath.length; i++) {
+      const nextDate = new Date(lastDate);
+      nextDate.setDate(nextDate.getDate() + i);
+      forecastLabels.push(nextDate.toISOString().split('T')[0]);
     }
 
-    setDefaultDates() {
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setFullYear(startDate.getFullYear() - 1);
-        document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
-        document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
-    }
+    const padArray = (arr, length) => [...arr, ...Array(length - arr.length).fill(null)];
 
-    bindEvents() {
-        document.getElementById('updateBtn').addEventListener('click', async () => await this.loadAllData());
-        ['startDate', 'endDate', 'forecastDays', 'simulations'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.addEventListener('change', () => {
-                clearTimeout(this.updateTimeout);
-                this.updateTimeout = setTimeout(() => this.loadAllData(), 300);
-            });
-        });
-    }
+    const historicalLen = historicalData.length;
+    const medianForecast = Array(historicalLen - 1).fill(null).concat(monteCarloResults.medianPath);
+    const upperForecast = Array(historicalLen - 1).fill(null).concat(monteCarloResults.upperPath);
+    const lowerForecast = Array(historicalLen - 1).fill(null).concat(monteCarloResults.lowerPath);
 
-    async loadAllData() {
-        try {
-            this.showLoading(true);
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-            const forecastDays = parseInt(document.getElementById('forecastDays').value) || 30;
-            const simulations = parseInt(document.getElementById('simulations').value) || 1000;
-            
-            const historicalData = await this.dataService.fetchHistoricalData(startDate, endDate);
-            const monteCarloData = await this.dataService.runMonteCarlo(forecastDays, simulations);
-            const mlData = await this.dataService.runNeuralNetwork(forecastDays);
-            const signalsData = await this.dataService.fetchSignals();
-            const backtestData = await this.dataService.runBacktest();
-            
-            this.updateDashboard(historicalData, monteCarloData, signalsData, backtestData, mlData);
-            this.showLoading(false);
-        } catch (error) {
-            console.error('Error:', error);
-            this.showLoading(false);
+    this.mainChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: forecastLabels,
+        datasets: [
+          {
+            label: 'Precio Cierre (€)',
+            data: padArray(closePrices, forecastLabels.length),
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: false
+          },
+          {
+            label: 'Banda Superior',
+            data: padArray(upperBands, forecastLabels.length),
+            borderColor: 'rgba(108, 117, 125, 0.4)',
+            borderWidth: 1,
+            borderDash: [4, 4],
+            pointRadius: 0,
+            fill: false
+          },
+          {
+            label: 'Banda Inferior',
+            data: padArray(lowerBands, forecastLabels.length),
+            borderColor: 'rgba(108, 117, 125, 0.4)',
+            borderWidth: 1,
+            borderDash: [4, 4],
+            pointRadius: 0,
+            fill: false
+          },
+          {
+            label: 'Predicción Media Monte Carlo',
+            data: medianForecast,
+            borderColor: '#20c997',
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: false
+          },
+          {
+            label: 'Rango Predicción (90%)',
+            data: upperForecast,
+            borderColor: 'rgba(32, 201, 151, 0.2)',
+            backgroundColor: 'rgba(32, 201, 151, 0.15)',
+            borderWidth: 0,
+            pointRadius: 0,
+            fill: '+1'
+          },
+          {
+            label: 'Rango Inferior',
+            data: lowerForecast,
+            borderColor: 'rgba(32, 201, 151, 0.2)',
+            borderWidth: 0,
+            pointRadius: 0,
+            fill: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: { enabled: true }
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: { grid: { color: '#f0f0f0' } }
         }
+      }
+    });
+  }
+
+  renderTrendChart(canvasId, historicalData) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    if (this.trendChart) {
+      this.trendChart.destroy();
     }
 
-    updateDashboard(historicalData, monteCarloData, signalsData, backtestData, mlData) {
-        this.charts.createMainChart(historicalData, monteCarloData.forecast, signalsData.indicators);
-        if (signalsData.indicators) this.charts.createMACDChart(signalsData.indicators);
-        this.charts.createGaugeChart(signalsData.current_signal.bullish_percentage);
-        this.updateStatistics(monteCarloData, historicalData, signalsData);
-        this.updateSignalsTable(signalsData.historical_signals);
-        this.updateSignalDisplay(signalsData.current_signal);
-        if (backtestData) this.updateBacktest(backtestData);
-        if (mlData) this.updateMLComparison(monteCarloData, mlData);
-    }
+    const recentData = historicalData.slice(-60);
+    const labels = recentData.map(d => d.date);
+    const volumes = recentData.map(d => d.volume || 0);
 
-    updateStatistics(monteCarloData, historicalData, signalsData) {
-        const stats = monteCarloData.forecast.final_price_stats;
-        const lastPrice = historicalData.length > 0 ? historicalData[historicalData.length - 1].close : 0;
-        
-        document.getElementById('currentPrice').textContent = lastPrice ? '€' + lastPrice.toFixed(4) : '-';
-        document.getElementById('medianPrice').textContent = stats.median ? '€' + stats.median.toFixed(4) : '-';
-        document.getElementById('confidenceInterval').textContent = stats.p5 ? '€' + stats.p5.toFixed(4) + ' - €' + stats.p95.toFixed(4) : '-';
-        document.getElementById('volatility').textContent = monteCarloData.volatility ? (monteCarloData.volatility * 100).toFixed(2) + '%' : '-';
-        document.getElementById('expectedReturn').textContent = monteCarloData.mean_return ? (monteCarloData.mean_return * 100).toFixed(4) + '%' : '-';
-        
-        if (signalsData.indicators) {
-            document.getElementById('bollUpper').textContent = signalsData.indicators.lastBollUpper !== '-' ? '€' + signalsData.indicators.lastBollUpper : '-';
-            document.getElementById('bollLower').textContent = signalsData.indicators.lastBollLower !== '-' ? '€' + signalsData.indicators.lastBollLower : '-';
-            document.getElementById('macdValue').textContent = signalsData.indicators.lastMACD !== '-' ? signalsData.indicators.lastMACD : '-';
+    this.trendChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Volumen',
+          data: volumes,
+          backgroundColor: 'rgba(0, 184, 217, 0.5)',
+          borderColor: '#00b8d9',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { grid: { color: '#f0f0f0' } }
         }
-        
-        if (monteCarloData.forecast.simulation_paths.length > 0 && lastPrice > 0) {
-            const finalPrices = monteCarloData.forecast.simulation_paths.map(p => p[p.length - 1]);
-            const bearish = finalPrices.filter(p => p < lastPrice * 0.98).length;
-            const neutral = finalPrices.filter(p => p >= lastPrice * 0.98 && p <= lastPrice * 1.02).length;
-            const bullish = finalPrices.filter(p => p > lastPrice * 1.02).length;
-            const total = finalPrices.length;
-            document.getElementById('bearishProb').textContent = ((bearish/total)*100).toFixed(1) + '%';
-            document.getElementById('neutralProb').textContent = ((neutral/total)*100).toFixed(1) + '%';
-            document.getElementById('bullishProb').textContent = ((bullish/total)*100).toFixed(1) + '%';
-        }
-    }
-
-    updateSignalsTable(signals) {
-        const tbody = document.getElementById('signalsBody');
-        if (!signals || signals.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">⚠️ No signals in selected date range</td></tr>';
-            return;
-        }
-        tbody.innerHTML = signals.reverse().map(s => 
-            '<tr><td>' + s.date + '</td><td><span class="signal-' + s.type + '">' + s.type + '</span></td><td>€' + s.price + '</td><td><small>' + s.reason + '</small></td><td>' + s.rsi + '</td></tr>'
-        ).join('');
-    }
-
-    updateSignalDisplay(currentSignal) {
-        const signalText = document.getElementById('signalText');
-        signalText.textContent = currentSignal.signal.replace(/_/g, ' ');
-        let colorClass = 'text-warning';
-        if (currentSignal.signal.includes('BUY')) colorClass = 'text-success';
-        if (currentSignal.signal.includes('SELL')) colorClass = 'text-danger';
-        signalText.className = 'display-6 fw-bold ' + colorClass;
-        document.getElementById('signalDetails').innerHTML = '🟢 Bullish: <strong>' + currentSignal.bullish_percentage + '%</strong> | 🔴 Bearish: <strong>' + currentSignal.bearish_percentage + '%</strong> | 📊 Confidence: <strong>' + currentSignal.confidence + '</strong>';
-    }
-
-    updateBacktest(backtest) {
-        document.getElementById('btFinalCapital').textContent = '€' + backtest.finalCapital;
-        document.getElementById('btReturn').textContent = backtest.totalReturn + '%';
-        document.getElementById('btReturn').className = 'fw-bold ' + (parseFloat(backtest.totalReturn) >= 0 ? 'text-success' : 'text-danger');
-        document.getElementById('btWinRate').textContent = backtest.winRate + '%';
-        
-        const tbody = document.getElementById('btTradesBody');
-        if (backtest.trades.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No trades in selected period</td></tr>';
-            return;
-        }
-        tbody.innerHTML = backtest.trades.reverse().map(t => 
-            '<tr><td>' + t.entryDate + '</td><td>' + t.exitDate + (t.open ? ' <span class="badge bg-warning">OPEN</span>' : '') + '</td><td>€' + parseFloat(t.entryPrice).toFixed(4) + '</td><td>€' + parseFloat(t.exitPrice).toFixed(4) + '</td><td class="' + (parseFloat(t.profit) >= 0 ? 'text-success' : 'text-danger') + '">€' + t.profit + '</td><td class="' + (parseFloat(t.profitPct) >= 0 ? 'text-success' : 'text-danger') + '">' + t.profitPct + '%</td></tr>'
-        ).join('');
-    }
-
-    updateMLComparison(monteCarloData, mlData) {
-        const mcMedian = monteCarloData.forecast.final_price_stats.median;
-        const nnLast = mlData.predictions[mlData.predictions.length - 1];
-        const lastPrice = mlData.lastPrice;
-        
-        document.getElementById('mcPrice').textContent = '€' + mcMedian.toFixed(4);
-        document.getElementById('mcTrend').textContent = mcMedian > lastPrice ? '🟢 Bullish' : '🔴 Bearish';
-        document.getElementById('mcTrend').className = mcMedian > lastPrice ? 'text-success' : 'text-danger';
-        
-        document.getElementById('nnPrice').textContent = '€' + nnLast.toFixed(4);
-        document.getElementById('nnTrend').textContent = mlData.trend === 'BULLISH' ? '🟢 Bullish' : '🔴 Bearish';
-        document.getElementById('nnTrend').className = mlData.trend === 'BULLISH' ? 'text-success' : 'text-danger';
-        
-        const mcBullish = mcMedian > lastPrice;
-        const nnBullish = mlData.trend === 'BULLISH';
-        let consensusText, consensusColor;
-        if (mcBullish && nnBullish) { consensusText = '🟢 STRONG BUY'; consensusColor = 'text-success'; }
-        else if (!mcBullish && !nnBullish) { consensusText = '🔴 STRONG SELL'; consensusColor = 'text-danger'; }
-        else { consensusText = '🟡 MIXED'; consensusColor = 'text-warning'; }
-        
-        document.getElementById('consensus').textContent = consensusText;
-        document.getElementById('consensus').className = 'fw-bold ' + consensusColor;
-        document.getElementById('consensusLabel').textContent = 'MC + NN agreement';
-    }
-
-    showLoading(show) {
-        const btn = document.getElementById('updateBtn');
-        if (show) { btn.disabled = true; btn.innerHTML = '⏳ Running...'; }
-        else { btn.disabled = false; btn.innerHTML = '🔄 Run Analysis'; }
-    }
+      }
+    });
+  }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Telefonica Stock Predictor v3.0 - ML Edition');
-    window.dashboard = new Dashboard();
-});
+window.chartManager = new ChartManager();
