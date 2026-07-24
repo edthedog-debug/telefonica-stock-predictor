@@ -4,45 +4,209 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Telefónica (TEF.MC) - Stock Predictor v3.0</title>
-  <link rel="stylesheet" href="./assets/css/style.css">
+  
+  <!-- Carga de Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Enlace al archivo CSS externo -->
+  <link rel="stylesheet" href="assets/css/style.css">
+
+  <!-- Estilos integrados de respaldo para garantizar el diseño exacto -->
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f1f4f9;
+      color: #1a1d20;
+      padding-bottom: 30px;
+    }
+
+    /* Cabecera Principal Oscura */
+    .app-header {
+      background-color: #1a202c;
+      color: #ffffff;
+      text-align: center;
+      padding: 20px 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    }
+
+    .app-header h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .app-header p {
+      font-size: 0.8rem;
+      color: #38bdf8;
+    }
+
+    .app-header a {
+      color: #38bdf8;
+      text-decoration: underline;
+    }
+
+    /* Contenedor Central */
+    .main-container {
+      max-width: 500px;
+      margin: 12px auto;
+      padding: 0 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Tarjeta de Formularios / Inputs */
+    .controls-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: transparent;
+    }
+
+    .input-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .input-block label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #2d3748;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      background-color: #ffffff;
+      color: #2d3748;
+      text-align: center;
+      outline: none;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
+    }
+
+    .input-field:focus {
+      border-color: #0066ff;
+    }
+
+    /* Botón de Ejecución */
+    .btn-run-analysis {
+      width: 100%;
+      background-color: #0066ff;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 4px;
+      box-shadow: 0 3px 6px rgba(0, 102, 255, 0.25);
+      transition: background-color 0.2s;
+    }
+
+    .btn-run-analysis:hover {
+      background-color: #0052cc;
+    }
+
+    /* Tarjetas de Gráficos */
+    .chart-card {
+      background: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border: 1px solid #e2e8f0;
+    }
+
+    .chart-header {
+      padding: 12px 14px;
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chart-header.blue {
+      background-color: #0066ff;
+    }
+
+    .chart-header.cyan {
+      background-color: #00bcd4;
+    }
+
+    .chart-body {
+      padding: 12px;
+      position: relative;
+      width: 100%;
+      background-color: #ffffff;
+    }
+  </style>
 </head>
 <body>
 
-  <header class="header">
+  <!-- Encabezado Principal -->
+  <header class="app-header">
     <h1>📈 Telefónica (TEF.MC) - Stock Predictor v3.0</h1>
-    <p>BME Exchange | ISIN: ES0178430E18 | <a href="https://github.com" target="_blank">edthedog-debug</a></p>
+    <p>BME Exchange | ISIN: ES0178430E18 | <a href="https://github.com/edthedog-debug" target="_blank">edthedog-debug</a></p>
   </header>
 
-  <main class="container">
-    <section class="controls-card">
-      <div class="form-group">
+  <!-- Contenido Central -->
+  <main class="main-container">
+
+    <!-- Panel de Control e Inputs -->
+    <section class="controls-group">
+      <div class="input-block">
         <label>☑ Start Date</label>
-        <input type="text" id="startDate" class="form-control" value="24 jul 2025" readonly>
+        <input type="text" id="startDate" class="input-field" value="24 jul 2025" readonly>
       </div>
 
-      <div class="form-group">
+      <div class="input-block">
         <label>☒ End Date</label>
-        <input type="text" id="endDate" class="form-control" value="24 jul 2026" readonly>
+        <input type="text" id="endDate" class="input-field" value="24 jul 2026" readonly>
       </div>
 
-      <div class="form-group">
+      <div class="input-block">
         <label>➔ Forecast Days</label>
-        <select id="forecastDays" class="form-control">
+        <select id="forecastDays" class="input-field">
           <option value="30" selected>30 Days</option>
           <option value="60">60 Days</option>
           <option value="90">90 Days</option>
         </select>
       </div>
 
-      <div class="form-group">
+      <div class="input-block">
         <label>⚏ Simulations</label>
-        <input type="text" id="simulations" class="form-control" value="1,000">
+        <input type="text" id="simulations" class="input-field" value="1,000">
       </div>
 
-      <button id="run-analysis" class="btn-run">🔄 Run Analysis</button>
+      <button id="run-analysis" class="btn-run-analysis">
+        🔄 Run Analysis
+      </button>
     </section>
 
+    <!-- Gráfico 1: Precio + Bandas + Monte Carlo -->
     <section class="chart-card">
       <div class="chart-header blue">
         📈 Price + Bollinger Bands + Monte Carlo Forecast
@@ -52,18 +216,21 @@
       </div>
     </section>
 
+    <!-- Gráfico 2: Indicador de Tendencia -->
     <section class="chart-card">
       <div class="chart-header cyan">
         📊 Trend Indicator
       </div>
-      <div class="chart-body" style="height: 200px;">
+      <div class="chart-body" style="height: 180px;">
         <canvas id="trendChart"></canvas>
       </div>
     </section>
+
   </main>
 
-  <script src="./assets/js/data-service.js"></script>
-  <script src="./assets/js/charts.js"></script>
-  <script src="./assets/js/dashboard.js"></script>
+  <!-- Carga de Lógica JS -->
+  <script src="assets/js/data-service.js"></script>
+  <script src="assets/js/charts.js"></script>
+  <script src="assets/js/dashboard.js"></script>
 </body>
 </html>
