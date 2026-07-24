@@ -1,9 +1,4 @@
 class DataService {
-  constructor() {
-    this.baseUrl = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-  }
-
-  // Generador de datos de respaldo en caso de que falle el fetch
   generateFallbackData() {
     const data = [];
     let price = 4.10;
@@ -29,15 +24,13 @@ class DataService {
   }
 
   async loadHistoricalData() {
-    const possiblePaths = [
+    const paths = [
       './data/sample-data.json',
-      'data/sample-data.json',
-      `${this.baseUrl}data/sample-data.json`,
       './data/predictions.json',
-      'data/predictions.json'
+      'data/sample-data.json'
     ];
 
-    for (const path of possiblePaths) {
+    for (const path of paths) {
       try {
         const response = await fetch(path);
         if (response.ok) {
@@ -47,20 +40,17 @@ class DataService {
           if (json.data && Array.isArray(json.data)) return json.data;
         }
       } catch (e) {
-        console.warn(`No se pudo cargar desde ${path}, reintentando...`);
+        // Continua al siguiente path o al fallback
       }
     }
 
-    console.warn("Utilizando datos de reserva (Fallback Data) para TEF.MC.");
     return this.generateFallbackData();
   }
 
   calculateBollingerBands(data, period = 20, stdDevMultiplier = 2) {
-    const result = [];
-    for (let i = 0; i < data.length; i++) {
+    return data.map((item, i) => {
       if (i < period - 1) {
-        result.push({ ...data[i], sma: null, upper: null, lower: null });
-        continue;
+        return { ...item, sma: null, upper: null, lower: null };
       }
       const slice = data.slice(i - period + 1, i + 1);
       const sum = slice.reduce((acc, curr) => acc + curr.close, 0);
@@ -69,20 +59,19 @@ class DataService {
       const variance = slice.reduce((acc, curr) => acc + Math.pow(curr.close - sma, 2), 0) / period;
       const stdDev = Math.sqrt(variance);
 
-      result.push({
-        ...data[i],
+      return {
+        ...item,
         sma: parseFloat(sma.toFixed(3)),
         upper: parseFloat((sma + stdDev * stdDevMultiplier).toFixed(3)),
         lower: parseFloat((sma - stdDev * stdDevMultiplier).toFixed(3))
-      });
-    }
-    return result;
+      };
+    });
   }
 
   runMonteCarlo(lastPrice, days = 30, simulations = 1000) {
     const results = [];
-    const volatility = 0.015; // Volatilidad diaria estimada
-    const drift = 0.0002;    // Deriva diaria estimada
+    const volatility = 0.015;
+    const drift = 0.0002;
 
     for (let s = 0; s < simulations; s++) {
       let current = lastPrice;
@@ -95,7 +84,6 @@ class DataService {
       results.push(path);
     }
 
-    // Calcular media y percentiles
     const medianPath = [];
     const upperPath = [];
     const lowerPath = [];
