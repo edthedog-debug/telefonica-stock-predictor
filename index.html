@@ -4,68 +4,66 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Telefónica (TEF.MC) - Stock Predictor v3.0</title>
-  <link rel="stylesheet" href="assets/css/style.css">
-  <!-- Chart.js CDN -->
+  <link rel="stylesheet" href="./assets/css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
   <header class="header">
     <h1>📈 Telefónica (TEF.MC) - Stock Predictor v3.0</h1>
-    <p>BME Exchange | ISIN: ES0178430E18 | edthedog-debug</p>
+    <p>BME Exchange | ISIN: ES0178430E18 | <a href="https://github.com" target="_blank">edthedog-debug</a></p>
   </header>
 
   <main class="container">
-    <section class="controls-panel">
-      <div class="input-group">
-        <label>📅 Start Date</label>
-        <input type="text" id="startDate" readonly>
+    <section class="controls-card">
+      <div class="form-group">
+        <label>☑ Start Date</label>
+        <input type="text" id="startDate" class="form-control" value="24 jul 2025" readonly>
       </div>
 
-      <div class="input-group">
-        <label>📅 End Date</label>
-        <input type="text" id="endDate" readonly>
+      <div class="form-group">
+        <label>☒ End Date</label>
+        <input type="text" id="endDate" class="form-control" value="24 jul 2026" readonly>
       </div>
 
-      <div class="input-group">
+      <div class="form-group">
         <label>➔ Forecast Days</label>
-        <select id="forecastDays">
+        <select id="forecastDays" class="form-control">
           <option value="30" selected>30 Days</option>
           <option value="60">60 Days</option>
           <option value="90">90 Days</option>
         </select>
       </div>
 
-      <div class="input-group">
-        <label>🔢 Simulations</label>
-        <input type="text" id="simulations" value="1,000">
+      <div class="form-group">
+        <label>⚏ Simulations</label>
+        <input type="text" id="simulations" class="form-control" value="1,000">
       </div>
 
-      <button id="run-analysis" class="btn-primary">🔄 Run Analysis</button>
+      <button id="run-analysis" class="btn-run">🔄 Run Analysis</button>
     </section>
 
-    <section class="chart-box">
-      <div class="chart-header">
+    <section class="chart-card">
+      <div class="chart-header blue">
         📈 Price + Bollinger Bands + Monte Carlo Forecast
       </div>
-      <div class="chart-container" style="position: relative; height: 350px; width: 100%;">
+      <div class="chart-body" style="height: 320px;">
         <canvas id="mainChart"></canvas>
       </div>
     </section>
 
-    <section class="chart-box">
+    <section class="chart-card">
       <div class="chart-header cyan">
         📊 Trend Indicator
       </div>
-      <div class="chart-container" style="position: relative; height: 200px; width: 100%;">
+      <div class="chart-body" style="height: 200px;">
         <canvas id="trendChart"></canvas>
       </div>
     </section>
   </main>
 
-  <!-- Carga de Scripts en Orden Correcto -->
-  <script src="assets/js/data-service.js"></script>
-  <script src="assets/js/charts.js"></script>
-  <script src="assets/js/dashboard.js"></script>
+  <script src="./assets/js/data-service.js"></script>
+  <script src="./assets/js/charts.js"></script>
+  <script src="./assets/js/dashboard.js"></script>
 </body>
 </html>
