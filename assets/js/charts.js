@@ -5,7 +5,6 @@ class StockChartManager {
         this.macdChart = null;
     }
 
-    // Helper para calcular la Media Móvil Exponencial (EMA)
     calculateEMA(data, period) {
         const k = 2 / (period + 1);
         let emaArray = [data[0]];
@@ -21,7 +20,7 @@ class StockChartManager {
         const labels = historical.map(item => item.date);
         const prices = historical.map(item => item.price);
 
-        // --- 1. CÁLCULO DE BANDAS DE BOLLINGER (SMA 20) ---
+        // --- 1. BANDAS DE BOLLINGER (SMA 20) ---
         const period = 20;
         const upperBand = [];
         const lowerBand = [];
@@ -43,7 +42,7 @@ class StockChartManager {
             }
         }
 
-        // --- 2. CÁLCULO DE LA PROYECCIÓN MONTE CARLO ---
+        // --- 2. PROYECCIÓN MONTE CARLO ---
         let returns = [];
         for (let i = 1; i < prices.length; i++) {
             returns.push(Math.log(prices[i] / prices[i - 1]));
@@ -56,7 +55,6 @@ class StockChartManager {
         const historicalDataset = [...prices];
         const mcForecastDataset = new Array(prices.length - 1).fill(null);
         
-        // Punto de empalme con el último precio conocido
         const lastClosePrice = prices[prices.length - 1];
         mcForecastDataset.push(lastClosePrice);
 
@@ -77,7 +75,7 @@ class StockChartManager {
             mcForecastDataset.push(projectedPrice);
         }
 
-        // --- 3. GRÁFICO PRINCIPAL (PRECIO + BOLLINGER + MONTE CARLO FORECAST) ---
+        // --- 3. GRÁFICO PRINCIPAL (PRECIO + BOLLINGER + MONTE CARLO + GLOW) ---
         const mainCanvas = document.getElementById('mainChart');
         if (mainCanvas) {
             const mainCtx = mainCanvas.getContext('2d');
@@ -126,9 +124,14 @@ class StockChartManager {
             });
         }
 
-        // --- 4. INDICADOR DE TENDENCIA (GAUGE) CON POSICIÓN Y ASPECTO FIJOS ---
-        const gaugeCtx = document.getElementById('gaugeChart')?.getContext('2d');
-        if (gaugeCtx) {
+        // --- 4. INDICADOR DE TENDENCIA (GAUGE) - SOLUCIÓN ESPACIO EN BLANCO ---
+        const gaugeCanvas = document.getElementById('gaugeChart');
+        if (gaugeCanvas) {
+            // Eliminamos el espacio blanco sobrante del canvas
+            gaugeCanvas.style.maxHeight = '160px';
+            gaugeCanvas.style.width = '100%';
+
+            const gaugeCtx = gaugeCanvas.getContext('2d');
             if (this.gaugeChart) this.gaugeChart.destroy();
             const isBullish = (metrics.mcTrendPct !== undefined ? metrics.mcTrendPct : (drift >= 0)) >= 0;
 
@@ -139,23 +142,18 @@ class StockChartManager {
                     datasets: [{
                         data: [isBullish ? 75 : 25, isBullish ? 25 : 75],
                         backgroundColor: ['#198754', '#dc3545'],
-                        borderWidth: 0
+                        borderWidth: 0,
+                        cutout: '70%'
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
-                    aspectRatio: 1.8,
+                    aspectRatio: 2, // Relación exacta 2:1 para eliminar el espacio inferior
                     rotation: -90,
                     circumference: 180,
                     events: [],
                     animation: false,
-                    layout: {
-                        padding: {
-                            top: 10,
-                            bottom: 0
-                        }
-                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: { enabled: false }
