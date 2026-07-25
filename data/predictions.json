@@ -1,15 +1,18 @@
 {
-  "generated_at": "2026-07-24T20:27:01.249904",
-  "data_points": 667,
-  "last_price": 3.622,
-  "forecast_30d": {
-    "median": 3.6266803609993783,
-    "mean": 3.6265082914825633,
-    "p5": 3.5418576027305844,
-    "p95": 3.7121348775682685,
-    "prob_up": 53.400000000000006,
-    "expected_return_pct": 0.12446967097081707
+  "lastUpdated": "2026-07-26",
+  "status": "Autoupdate Active",
+  "modelMetrics": {
+    "architecture": "LSTM / Recurrent NN",
+    "learningRate": "0.001",
+    "epochs": "100",
+    "lossFunction": "MSE"
   },
-  "last_updated": "2026-07-24",
-  "last_close": 3.598
+  "historicalPrices": [
+    { "date": "2026-07-20", "price": 4.120 },
+    { "date": "2026-07-21", "price": 4.145 },
+    { "date": "2026-07-22", "price": 4.130 },
+    { "date": "2026-07-23", "price": 4.160 },
+    { "date": "2026-07-24", "price": 4.185 },
+    { "date": "2026-07-25", "price": 4.190 }
+  ]
 }
