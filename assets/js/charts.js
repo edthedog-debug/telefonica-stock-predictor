@@ -1,150 +1,76 @@
-class ChartManager {
-  constructor() {
-    this.mainChart = null;
-    this.trendChart = null;
-  }
-
-  renderMainChart(canvasId, historicalData, monteCarloResults) {
-    const ctx = document.getElementById(canvasId);
-    if (!ctx) return;
-
-    if (this.mainChart) {
-      this.mainChart.destroy();
+class StockChart {
+    constructor(canvasId) {
+        this.canvasId = canvasId;
+        this.chart = null;
     }
 
-    const labels = historicalData.map(d => d.date);
-    const closePrices = historicalData.map(d => d.close);
-    const upperBands = historicalData.map(d => d.upper);
-    const lowerBands = historicalData.map(d => d.lower);
-    const sma = historicalData.map(d => d.sma);
+    /**
+     * Renders the price trend and projected forecast on the canvas element.
+     * @param {Array} historicalData Array containing timestamped stock quotes.
+     * @param {Object} prediction Object containing predicted price and trend metadata.
+     */
+    render(historicalData, prediction) {
+        const ctx = document.getElementById(this.canvasId).getContext('2d');
 
-    // Fechas para la predicción
-    const lastDate = new Date(historicalData[historicalData.length - 1].date);
-    const forecastLabels = [...labels];
-    
-    for (let i = 1; i < monteCarloResults.medianPath.length; i++) {
-      const nextDate = new Date(lastDate);
-      nextDate.setDate(nextDate.getDate() + i);
-      forecastLabels.push(nextDate.toISOString().split('T')[0]);
-    }
+        const labels = historicalData.map(item => item.date);
+        const prices = historicalData.map(item => item.price);
 
-    const padArray = (arr, length) => [...arr, ...Array(length - arr.length).fill(null)];
-
-    const historicalLen = historicalData.length;
-    const medianForecast = Array(historicalLen - 1).fill(null).concat(monteCarloResults.medianPath);
-    const upperForecast = Array(historicalLen - 1).fill(null).concat(monteCarloResults.upperPath);
-    const lowerForecast = Array(historicalLen - 1).fill(null).concat(monteCarloResults.lowerPath);
-
-    this.mainChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: forecastLabels,
-        datasets: [
-          {
-            label: 'Precio Cierre (€)',
-            data: padArray(closePrices, forecastLabels.length),
-            borderColor: '#0d6efd',
-            backgroundColor: 'rgba(13, 110, 253, 0.1)',
-            borderWidth: 2,
-            pointRadius: 0,
-            fill: false
-          },
-          {
-            label: 'Banda Superior',
-            data: padArray(upperBands, forecastLabels.length),
-            borderColor: 'rgba(108, 117, 125, 0.4)',
-            borderWidth: 1,
-            borderDash: [4, 4],
-            pointRadius: 0,
-            fill: false
-          },
-          {
-            label: 'Banda Inferior',
-            data: padArray(lowerBands, forecastLabels.length),
-            borderColor: 'rgba(108, 117, 125, 0.4)',
-            borderWidth: 1,
-            borderDash: [4, 4],
-            pointRadius: 0,
-            fill: false
-          },
-          {
-            label: 'Predicción Media Monte Carlo',
-            data: medianForecast,
-            borderColor: '#20c997',
-            borderWidth: 2,
-            pointRadius: 0,
-            fill: false
-          },
-          {
-            label: 'Rango Predicción (90%)',
-            data: upperForecast,
-            borderColor: 'rgba(32, 201, 151, 0.2)',
-            backgroundColor: 'rgba(32, 201, 151, 0.15)',
-            borderWidth: 0,
-            pointRadius: 0,
-            fill: '+1'
-          },
-          {
-            label: 'Rango Inferior',
-            data: lowerForecast,
-            borderColor: 'rgba(32, 201, 151, 0.2)',
-            borderWidth: 0,
-            pointRadius: 0,
-            fill: false
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { intersect: false, mode: 'index' },
-        plugins: {
-          legend: { position: 'top' },
-          tooltip: { enabled: true }
-        },
-        scales: {
-          x: { grid: { display: false } },
-          y: { grid: { color: '#f0f0f0' } }
+        if (prediction) {
+            labels.push('Next (Pred)');
+            prices.push(prediction.predictedPrice);
         }
-      }
-    });
-  }
 
-  renderTrendChart(canvasId, historicalData) {
-    const ctx = document.getElementById(canvasId);
-    if (!ctx) return;
-
-    if (this.trendChart) {
-      this.trendChart.destroy();
-    }
-
-    const recentData = historicalData.slice(-60);
-    const labels = recentData.map(d => d.date);
-    const volumes = recentData.map(d => d.volume || 0);
-
-    this.trendChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Volumen',
-          data: volumes,
-          backgroundColor: 'rgba(0, 184, 217, 0.5)',
-          borderColor: '#00b8d9',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false } },
-          y: { grid: { color: '#f0f0f0' } }
+        if (this.chart) {
+            this.chart.destroy();
         }
-      }
-    });
-  }
+
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Stock Price (€)',
+                    data: prices,
+                    borderColor: '#38bdf8',
+                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: prices.map((_, idx) => idx === prices.length - 1 && prediction ? '#22c55e' : '#38bdf8'),
+                    pointRadius: prices.map((_, idx) => idx === prices.length - 1 && prediction ? 6 : 3)
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#f8fafc'
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: '#334155'
+                        },
+                        ticks: {
+                            color: '#94a3b8'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: '#334155'
+                        },
+                        ticks: {
+                            color: '#94a3b8'
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
 
-window.chartManager = new ChartManager();
+window.stockChart = new StockChart('stockChart');
