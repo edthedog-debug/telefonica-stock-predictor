@@ -1,59 +1,70 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  const runBtn = document.getElementById('run-analysis');
-  const startDateInput = document.getElementById('startDate');
-  const endDateInput = document.getElementById('endDate');
-  const forecastDaysSelect = document.getElementById('forecastDays');
-  const simulationsInput = document.getElementById('simulations');
-
-  function formatDate(dateStr) {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
-  }
-
-  async function executeAnalysis() {
     try {
-      if (runBtn) {
-        runBtn.disabled = true;
-        runBtn.innerHTML = '🔄 Cargando...';
-      }
+        const data = await window.dataService.fetchLatestData();
+        
+        if (!data || !data.historicalPrices || data.historicalPrices.length === 0) {
+            throw new Error('No historical price data available.');
+        }
 
-      const rawData = await window.dataService.loadHistoricalData();
-      const processedData = window.dataService.calculateBollingerBands(rawData);
-      const lastPrice = processedData[processedData.length - 1].close;
+        const historical = data.historicalPrices;
+        const lastClose = historical[historical.length - 1];
+        const previousClose = historical.length > 1 ? historical[historical.length - 2] : lastClose;
+        
+        // Price metrics update
+        const currentPriceElem = document.getElementById('current-price');
+        const priceChangeElem = document.getElementById('price-change');
+        
+        currentPriceElem.textContent = `€${lastClose.price.toFixed(3)}`;
+        
+        const priceDiff = lastClose.price - previousClose.price;
+        const pctDiff = ((priceDiff / previousClose.price) * 100).toFixed(2);
+        const isPositive = priceDiff >= 0;
+        
+        priceChangeElem.textContent = `${isPositive ? '+' : ''}${priceDiff.toFixed(3)} (${isPositive ? '+' : ''}${pctDiff}%)`;
+        priceChangeElem.className = `metric-sub ${isPositive ? 'positive' : 'negative'}`;
 
-      const forecastDays = forecastDaysSelect ? parseInt(forecastDaysSelect.value) || 30 : 30;
-      const simCount = simulationsInput ? parseInt(simulationsInput.value.replace(/,/g, '')) || 1000 : 1000;
+        // Model predictions calculation
+        const prediction = window.neuralNetworkPredictor.predictNext(historical);
+        
+        const predictedPriceElem = document.getElementById('predicted-price');
+        const predictionTrendElem = document.getElementById('prediction-trend');
+        const modelAccuracyElem = document.getElementById('model-accuracy');
+        
+        if (prediction) {
+            predictedPriceElem.textContent = `€${prediction.predictedPrice.toFixed(3)}`;
+            predictionTrendElem.textContent = `Trend: ${prediction.trend}`;
+            predictionTrendElem.className = `metric-sub ${prediction.trend === 'UP' ? 'positive' : 'negative'}`;
+            modelAccuracyElem.textContent = `${prediction.confidence}%`;
+        }
 
-      const monteCarloResults = window.dataService.runMonteCarlo(lastPrice, forecastDays, simCount);
+        // Timestamp and autoupdate status
+        const lastUpdateElem = document.getElementById('last-update');
+        const updateStatusElem = document.getElementById('update-status');
+        
+        lastUpdateElem.textContent = data.lastUpdated || new Date().toLocaleDateString();
+        updateStatusElem.textContent = data.status || 'Autoupdate Active';
 
-      if (startDateInput && processedData.length > 0) {
-        startDateInput.value = formatDate(processedData[0].date);
-      }
-      if (endDateInput && processedData.length > 0) {
-        endDateInput.value = formatDate(processedData[processedData.length - 1].date);
-      }
+        // Render stock chart
+        window.stockChart.render(historical, prediction);
 
-      window.chartManager.renderMainChart('mainChart', processedData, monteCarloResults);
-      window.chartManager.renderTrendChart('trendChart', processedData);
+        // Populate technical model details
+        const detailsContainer = document.getElementById('model-details');
+        if (detailsContainer && data.modelMetrics) {
+            detailsContainer.innerHTML = Object.entries(data.modelMetrics)
+                .map(([key, val]) => `
+                    <div class="detail-item">
+                        <span class="detail-label">${key.toUpperCase()}</span>
+                        <span class="detail-val">${val}</span>
+                    </div>
+                `).join('');
+        }
 
-    } catch (err) {
-      console.error("Error cargando dashboard:", err);
-    } finally {
-      if (runBtn) {
-        runBtn.disabled = false;
-        runBtn.innerHTML = '🔄 Run Analysis';
-      }
+    } catch (error) {
+        console.error('Error initializing predictor dashboard:', error);
+        const updateStatusElem = document.getElementById('update-status');
+        if (updateStatusElem) {
+            updateStatusElem.textContent = 'Error loading data';
+            updateStatusElem.className = 'metric-sub negative';
+        }
     }
-  }
-
-  if (runBtn) {
-    runBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      executeAnalysis();
-    });
-  }
-
-  await executeAnalysis();
 });
