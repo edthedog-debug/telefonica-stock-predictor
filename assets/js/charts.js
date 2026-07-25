@@ -5,7 +5,7 @@ class StockChartManager {
         this.macdChart = null;
     }
 
-    // Helper para calcular la Media Móvil Exponencial (EMA) necesaria para MACD
+    // Helper para calcular la Media Móvil Exponencial (EMA)
     calculateEMA(data, period) {
         const k = 2 / (period + 1);
         let emaArray = [data[0]];
@@ -15,7 +15,7 @@ class StockChartManager {
         return emaArray;
     }
 
-    renderAll(historical, forecastDays, metrics) {
+    renderAll(historical, forecastDays = 30, metrics = {}) {
         if (!historical || historical.length === 0) return;
 
         const labels = historical.map(item => item.date);
@@ -43,18 +43,50 @@ class StockChartManager {
             }
         }
 
-        // --- 2. GRÁFICO PRINCIPAL CON EFECTO GLOW ---
+        // --- 2. CÁLCULO DE LA PROYECCIÓN MONTE CARLO ---
+        let returns = [];
+        for (let i = 1; i < prices.length; i++) {
+            returns.push(Math.log(prices[i] / prices[i - 1]));
+        }
+        const meanReturn = returns.length > 0 ? returns.reduce((a, b) => a + b, 0) / returns.length : 0;
+        const variance = returns.length > 0 ? returns.reduce((a, b) => a + Math.pow(b - meanReturn, 2), 0) / returns.length : 0;
+        const drift = meanReturn - (variance / 2);
+
+        const fullLabels = [...labels];
+        const historicalDataset = [...prices];
+        const mcForecastDataset = new Array(prices.length - 1).fill(null);
+        
+        // Punto de empalme con el último precio conocido
+        const lastClosePrice = prices[prices.length - 1];
+        mcForecastDataset.push(lastClosePrice);
+
+        const lastDate = new Date(labels[labels.length - 1]);
+        const daysToProject = parseInt(forecastDays) || 30;
+
+        for (let day = 1; day <= daysToProject; day++) {
+            const nextDate = new Date(lastDate);
+            nextDate.setDate(lastDate.getDate() + day);
+            
+            fullLabels.push(nextDate.toISOString().split('T')[0]);
+            historicalDataset.push(null);
+            sma20.push(null);
+            upperBand.push(null);
+            lowerBand.push(null);
+
+            const projectedPrice = lastClosePrice * Math.exp(drift * day);
+            mcForecastDataset.push(projectedPrice);
+        }
+
+        // --- 3. GRÁFICO PRINCIPAL (PRECIO + BOLLINGER + MONTE CARLO FORECAST) ---
         const mainCanvas = document.getElementById('mainChart');
         if (mainCanvas) {
             const mainCtx = mainCanvas.getContext('2d');
             if (this.mainChart) this.mainChart.destroy();
 
-            // Degradado azul brillante para el área
             const glowGradient = mainCtx.createLinearGradient(0, 0, 0, 300);
-            glowGradient.addColorStop(0, 'rgba(13, 110, 253, 0.4)');
+            glowGradient.addColorStop(0, 'rgba(13, 110, 253, 0.35)');
             glowGradient.addColorStop(1, 'rgba(13, 110, 253, 0.0)');
 
-            // Plugin personalizado para el resplandor (Glow) de la línea de precio
             const glowPlugin = {
                 id: 'glowPlugin',
                 beforeDatasetDraw(chart, args) {
@@ -62,8 +94,8 @@ class StockChartManager {
                         const { ctx } = chart;
                         ctx.save();
                         ctx.shadowColor = 'rgba(13, 110, 253, 0.8)';
-                        ctx.shadowBlur = 12;
-                        ctx.shadowOffsetY = 4;
+                        ctx.shadowBlur = 10;
+                        ctx.shadowOffsetY = 3;
                     }
                 },
                 afterDatasetDraw(chart, args) {
@@ -76,9 +108,10 @@ class StockChartManager {
             this.mainChart = new Chart(mainCtx, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels: fullLabels,
                     datasets: [
-                        { label: 'Close Price (€)', data: prices, borderColor: '#0d6efd', backgroundColor: glowGradient, fill: true, pointRadius: 0, borderWidth: 2.5, tension: 0.2 },
+                        { label: 'Close Price (€)', data: historicalDataset, borderColor: '#0d6efd', backgroundColor: glowGradient, fill: true, pointRadius: 0, borderWidth: 2.5, tension: 0.1 },
+                        { label: 'Monte Carlo Forecast', data: mcForecastDataset, borderColor: '#8b5cf6', borderWidth: 2.5, borderDash: [5, 4], pointRadius: 0, tension: 0.1 },
                         { label: 'SMA 20', data: sma20, borderColor: '#ffc107', borderDash: [4, 4], pointRadius: 0, borderWidth: 1.5 },
                         { label: 'Upper Bollinger', data: upperBand, borderColor: '#dc3545', borderDash: [2, 2], pointRadius: 0, borderWidth: 1 },
                         { label: 'Lower Bollinger', data: lowerBand, borderColor: '#198754', borderDash: [2, 2], pointRadius: 0, borderWidth: 1 }
@@ -93,11 +126,11 @@ class StockChartManager {
             });
         }
 
-        // --- 3. INDICADOR DE TENDENCIA (GAUGE) SIN CAÍDA AL TOCAR ---
+        // --- 4. INDICADOR DE TENDENCIA (GAUGE) CON POSICIÓN Y ASPECTO FIJOS ---
         const gaugeCtx = document.getElementById('gaugeChart')?.getContext('2d');
         if (gaugeCtx) {
             if (this.gaugeChart) this.gaugeChart.destroy();
-            const isBullish = metrics.mcTrendPct >= 0;
+            const isBullish = (metrics.mcTrendPct !== undefined ? metrics.mcTrendPct : (drift >= 0)) >= 0;
 
             this.gaugeChart = new Chart(gaugeCtx, {
                 type: 'doughnut',
@@ -111,11 +144,18 @@ class StockChartManager {
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
+                    aspectRatio: 1.8,
                     rotation: -90,
                     circumference: 180,
-                    events: [], // Desactiva eventos táctiles/click para evitar reseteo o rotación
-                    animation: { animateRotate: false },
+                    events: [],
+                    animation: false,
+                    layout: {
+                        padding: {
+                            top: 10,
+                            bottom: 0
+                        }
+                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: { enabled: false }
@@ -124,12 +164,11 @@ class StockChartManager {
             });
         }
 
-        // --- 4. GRÁFICO MACD CON LÍNEAS MACD, SIGNAL Y CORTES ---
+        // --- 5. GRÁFICO MACD COMPLETO ---
         const macdCtx = document.getElementById('macdChart')?.getContext('2d');
         if (macdCtx) {
             if (this.macdChart) this.macdChart.destroy();
 
-            // Cálculo estándar: EMA 12, EMA 26 y Señal EMA 9
             const ema12 = this.calculateEMA(prices, 12);
             const ema26 = this.calculateEMA(prices, 26);
             
@@ -152,7 +191,7 @@ class StockChartManager {
                         },
                         {
                             type: 'line',
-                            label: 'Signal Line (SMA/EMA 9)',
+                            label: 'Signal Line (EMA 9)',
                             data: signalLine,
                             borderColor: '#fd7e14',
                             borderWidth: 1.5,
