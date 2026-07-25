@@ -75,7 +75,7 @@ class StockChartManager {
             mcForecastDataset.push(projectedPrice);
         }
 
-        // --- 3. GRÁFICO PRINCIPAL (PRECIO + BOLLINGER + MONTE CARLO + GLOW) ---
+        // --- 3. GRÁFICO PRINCIPAL ---
         const mainCanvas = document.getElementById('mainChart');
         if (mainCanvas) {
             const mainCtx = mainCanvas.getContext('2d');
@@ -124,13 +124,9 @@ class StockChartManager {
             });
         }
 
-        // --- 4. INDICADOR DE TENDENCIA (GAUGE) - SOLUCIÓN ESPACIO EN BLANCO ---
+        // --- 4. INDICADOR DE TENDENCIA (GAUGE) - SOLUCIÓN BUCLE INFINITO ---
         const gaugeCanvas = document.getElementById('gaugeChart');
         if (gaugeCanvas) {
-            // Eliminamos el espacio blanco sobrante del canvas
-            gaugeCanvas.style.maxHeight = '160px';
-            gaugeCanvas.style.width = '100%';
-
             const gaugeCtx = gaugeCanvas.getContext('2d');
             if (this.gaugeChart) this.gaugeChart.destroy();
             const isBullish = (metrics.mcTrendPct !== undefined ? metrics.mcTrendPct : (drift >= 0)) >= 0;
@@ -148,8 +144,7 @@ class StockChartManager {
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2, // Relación exacta 2:1 para eliminar el espacio inferior
+                    maintainAspectRatio: false, // Cancela el recálculo en bucle de la altura
                     rotation: -90,
                     circumference: 180,
                     events: [],
@@ -162,7 +157,7 @@ class StockChartManager {
             });
         }
 
-        // --- 5. GRÁFICO MACD COMPLETO ---
+        // --- 5. GRÁFICO MACD ---
         const macdCtx = document.getElementById('macdChart')?.getContext('2d');
         if (macdCtx) {
             if (this.macdChart) this.macdChart.destroy();
