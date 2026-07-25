@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
     let rawHistoricalData = [];
 
-    // Initialize inputs with Default Dates: Today and 1 Year Ago
+    // Fechas por defecto: Hoy y Hace 1 Año
     const startDateInput = document.getElementById('startDate');
     const endDateInput = document.getElementById('endDate');
     
@@ -12,6 +12,66 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (endDateInput) endDateInput.value = today.toISOString().split('T')[0];
     if (startDateInput) startDateInput.value = oneYearAgo.toISOString().split('T')[0];
 
+    // Motor de Backtesting basado en cruces de Media Móvil (SMA20)
+    function runStrategyBacktest(historical) {
+        if (!historical || historical.length < 25) {
+            return { finalCapital: 10000, totalReturnPct: 0, winRatePct: 0, trades: [] };
+        }
+
+        const initialCapital = 10000;
+        let currentCapital = initialCapital;
+        let position = null;
+        const trades = [];
+
+        // Recorrido de los datos históricos
+        for (let i = 20; i < historical.length; i++) {
+            const slice = historical.slice(i - 20, i);
+            const sma20 = slice.reduce((acc, item) => acc + item.price, 0) / 20;
+            const current = historical[i];
+            const prev = historical[i - 1];
+
+            // Señal de Compra: El precio cruza de abajo hacia arriba la SMA20
+            if (!position && prev.price <= sma20 && current.price > sma20) {
+                position = {
+                    entryDate: current.date,
+                    entryPrice: current.price
+                };
+            }
+            // Señal de Venta: El precio cae por debajo de la SMA20 o llegamos al final del periodo
+            else if (position && ((prev.price >= sma20 && current.price < sma20) || i === historical.length - 1)) {
+                const exitPrice = current.price;
+                const shares = currentCapital / position.entryPrice;
+                const exitValue = shares * exitPrice;
+                const profit = exitValue - currentCapital;
+                const profitPct = ((exitPrice - position.entryPrice) / position.entryPrice) * 100;
+
+                currentCapital = exitValue;
+
+                trades.push({
+                    entryDate: position.entryDate,
+                    exitDate: current.date,
+                    entryPrice: position.entryPrice,
+                    exitPrice: exitPrice,
+                    profit: profit,
+                    profitPct: profitPct
+                });
+
+                position = null;
+            }
+        }
+
+        const winningTrades = trades.filter(t => t.profit > 0).length;
+        const winRatePct = trades.length > 0 ? (winningTrades / trades.length) * 100 : 0;
+        const totalReturnPct = ((currentCapital - initialCapital) / initialCapital) * 100;
+
+        return {
+            finalCapital: currentCapital,
+            totalReturnPct: totalReturnPct,
+            winRatePct: winRatePct,
+            trades: trades.reverse() // Muestra las operaciones más recientes primero
+        };
+    }
+
     async function processAndRender() {
         try {
             if (!rawHistoricalData || rawHistoricalData.length === 0) {
@@ -21,7 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (rawHistoricalData.length === 0) return;
 
-            // Date filtering
+            // Filtro dinámico por fechas
             const startDateVal = startDateInput?.value;
             const endDateVal = endDateInput?.value;
 
@@ -38,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const currentPrice = prices[prices.length - 1];
             const prevPrice = prices.length > 1 ? prices[prices.length - 2] : currentPrice;
 
-            // 1. Current Price KPI
+            // 1. KPI Precio Actual
             const priceDiff = currentPrice - prevPrice;
             const pctDiff = prevPrice !== 0 ? ((priceDiff / prevPrice) * 100).toFixed(2) : "0.00";
             const priceElem = document.getElementById('currentPrice');
@@ -46,7 +106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 priceElem.innerHTML = `€${currentPrice.toFixed(3)} <span class="badge ${priceDiff >= 0 ? 'bg-success' : 'bg-danger'}">${priceDiff >= 0 ? '+' : ''}${pctDiff}%</span>`;
             }
 
-            // 2. Volatility & Forecast Calculations
+            // 2. Volatilidad e Indicadores Estadísticos
             const forecastDays = parseInt(document.getElementById('forecastDays')?.value || '30');
             let returns = [];
             for (let i = 1; i < prices.length; i++) {
@@ -63,7 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const bollUpper = sma20 + (2 * stdDev);
             const bollLower = sma20 - (2 * stdDev);
 
-            // Monte Carlo & Neural Net Predictions
+            // Modelos de Pronóstico
             const mcPrice = currentPrice * Math.exp((meanReturn - variance / 2) * forecastDays);
             const mcTrendPct = ((mcPrice - currentPrice) / currentPrice) * 100;
             
@@ -80,7 +140,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setText('bollLower', `€${bollLower.toFixed(3)}`);
             setText('macdValue', (currentPrice - sma20).toFixed(3));
 
-            // Comparison Row
+            // Comparativa Monte Carlo vs Red Neuronal
             setText('mcPrice', `€${mcPrice.toFixed(3)}`);
             setText('mcTrend', `${mcTrendPct >= 0 ? '+' : ''}${mcTrendPct.toFixed(2)}%`);
             setText('nnPrice', `€${nnPrice.toFixed(3)}`);
@@ -94,7 +154,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setText('bearishProb', isBullish ? '25%' : '60%');
             setText('neutralProb', '15%');
 
-            // Trend Signal Widget
+            // Indicador de Señal
             const signalText = document.getElementById('signalText');
             const signalDetails = document.getElementById('signalDetails');
             if (signalText) {
@@ -105,7 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 signalDetails.textContent = `Monte Carlo: ${mcTrendPct.toFixed(2)}% | NN: ${nnTrendPct.toFixed(2)}%`;
             }
 
-            // Trading Signals Table
+            // Tabla de Señales
             const signalsBody = document.getElementById('signalsBody');
             if (signalsBody) {
                 signalsBody.innerHTML = `
@@ -119,28 +179,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
             }
 
-            // Strategy Backtesting
-            const initialCap = 10000;
-            const finalCap = initialCap * (1 + (mcTrendPct / 100) * 0.4);
-            setText('btFinalCapital', `€${finalCap.toFixed(2)}`);
-            setText('btReturn', `${((finalCap - initialCap) / initialCap * 100).toFixed(2)}%`);
-            setText('btWinRate', '66.7%');
+            // Ejecución y renderizado de múltiples operaciones de Backtesting
+            const backtest = runStrategyBacktest(filtered);
+            setText('btFinalCapital', `€${backtest.finalCapital.toFixed(2)}`);
+            setText('btReturn', `${backtest.totalReturnPct >= 0 ? '+' : ''}${backtest.totalReturnPct.toFixed(2)}%`);
+            setText('btWinRate', `${backtest.winRatePct.toFixed(1)}%`);
 
             const btTradesBody = document.getElementById('btTradesBody');
             if (btTradesBody) {
-                btTradesBody.innerHTML = `
-                    <tr>
-                        <td>${dates[0]}</td>
-                        <td>${dates[dates.length - 1]}</td>
-                        <td>€${prices[0].toFixed(3)}</td>
-                        <td>€${currentPrice.toFixed(3)}</td>
-                        <td class="${finalCap >= initialCap ? 'text-success' : 'text-danger'}">€${(finalCap - initialCap).toFixed(2)}</td>
-                        <td class="${finalCap >= initialCap ? 'text-success' : 'text-danger'}">${((finalCap - initialCap) / initialCap * 100).toFixed(2)}%</td>
-                    </tr>
-                `;
+                if (backtest.trades.length === 0) {
+                    btTradesBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No trades generated for selected date range</td></tr>`;
+                } else {
+                    btTradesBody.innerHTML = backtest.trades.map(trade => `
+                        <tr>
+                            <td>${trade.entryDate}</td>
+                            <td>${trade.exitDate}</td>
+                            <td>€${trade.entryPrice.toFixed(3)}</td>
+                            <td>€${trade.exitPrice.toFixed(3)}</td>
+                            <td class="${trade.profit >= 0 ? 'text-success' : 'text-danger'}">€${trade.profit >= 0 ? '+' : ''}${trade.profit.toFixed(2)}</td>
+                            <td class="${trade.profitPct >= 0 ? 'text-success' : 'text-danger'}">${trade.profitPct >= 0 ? '+' : ''}${trade.profitPct.toFixed(2)}%</td>
+                        </tr>
+                    `).join('');
+                }
             }
 
-            // Render Charts
+            // Renderizado de gráficos con resplandor glow y MACD con líneas
             if (window.stockChart) {
                 window.stockChart.renderAll(filtered, forecastDays, { mcTrendPct });
             }
