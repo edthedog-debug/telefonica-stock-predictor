@@ -1,41 +1,32 @@
 #!/bin/bash
-# update-data.sh
-# Fetches the latest stock data and updates the JSON file dynamically
+# scripts/update-data.sh
+# Automated real-time market data fetcher for Telefónica (TEF.MC / BME)
 
-echo "Starting data update process..."
+echo "Fetching live stock market data for Telefónica (TEF.MC)..."
 
-# Define file paths
 DATA_FILE="data/predictions.json"
 TEMP_FILE="data/temp.json"
-
-# Get current date
 CURRENT_DATE=$(date +"%Y-%m-%d")
 
-# Check if jq is installed (GitHub Actions Ubuntu runners have it by default)
-if ! command -v jq &> /dev/null; then
-    echo "Error: jq could not be found. Please install jq."
-    exit 1
+# 1. Fetch official closing / market price for Telefónica (TEF.MC)
+RESPONSE=$(curl -s "https://query1.finance.yahoo.com/v8/finance/chart/TEF.MC?interval=1d&range=1d" \
+  -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+
+# 2. Extract regular market price using jq
+REAL_PRICE=$(echo "$RESPONSE" | jq -r '.chart.result[0].meta.regularMarketPrice')
+
+# Fallback validation if market is closed or API response is null
+if [ "$REAL_PRICE" == "null" ] || [ -z "$REAL_PRICE" ]; then
+  echo "Warning: Could not retrieve live price. Retaining last known price."
+  REAL_PRICE=$(jq -r '.historicalPrices[-1].price' $DATA_FILE)
 fi
 
-# Fetch the last price from the current JSON
-LAST_PRICE=$(jq '.historicalPrices[-1].price' $DATA_FILE)
+echo "Validated close price for $CURRENT_DATE: €$REAL_PRICE"
 
-# Calculate a new price dynamically (Simulated real-time tick for TEF)
-# In production, replace this block with a curl request to Google Finance or Yahoo Finance API
-FLUCTUATION=$(awk -v min=-0.05 -v max=0.05 'BEGIN{srand(); print min+rand()*(max-min)}')
-NEW_PRICE=$(echo "$LAST_PRICE + $FLUCTUATION" | bc -l)
-FORMATTED_PRICE=$(printf "%.3f" $NEW_PRICE)
-
-echo "New dynamic price for $CURRENT_DATE: €$FORMATTED_PRICE"
-
-# Update the JSON file dynamically:
-# 1. Update the 'lastUpdated' timestamp
-# 2. Append the new date and price to 'historicalPrices'
-# 3. Keep only the latest 14 days to prevent the file from growing infinitely
-jq --arg date "$CURRENT_DATE" --argjson price "$FORMATTED_PRICE" \
-   '.lastUpdated = $date | .historicalPrices += [{"date": $date, "price": $price}] | .historicalPrices |= .[-14:]' \
+# 3. Update JSON structure dynamically without duplicate dates
+jq --arg date "$CURRENT_DATE" --argjson price "$REAL_PRICE" \
+   '.lastUpdated = $date | .status = "Autoupdate Active (Real Market Data)" | .historicalPrices += [{"date": $date, "price": $price}] | .historicalPrices |= unique_by(.date) | .historicalPrices |= .[-30:]' \
    $DATA_FILE > $TEMP_FILE
 
 mv $TEMP_FILE $DATA_FILE
-
-echo "Data updated successfully."
+echo "data/predictions.json updated successfully with real market data."
