@@ -42,21 +42,26 @@ class StockChartManager {
             }
         }
 
-        // --- 2. PROYECCIÓN MONTE CARLO ---
+        // --- 2. PROYECCIÓN MONTE CARLO Y BANDAS DE ERROR ---
         let returns = [];
         for (let i = 1; i < prices.length; i++) {
             returns.push(Math.log(prices[i] / prices[i - 1]));
         }
         const meanReturn = returns.length > 0 ? returns.reduce((a, b) => a + b, 0) / returns.length : 0;
         const variance = returns.length > 0 ? returns.reduce((a, b) => a + Math.pow(b - meanReturn, 2), 0) / returns.length : 0;
+        const dailyStdDev = Math.sqrt(variance);
         const drift = meanReturn - (variance / 2);
 
         const fullLabels = [...labels];
         const historicalDataset = [...prices];
         const mcForecastDataset = new Array(prices.length - 1).fill(null);
+        const mcUpperDataset = new Array(prices.length - 1).fill(null);
+        const mcLowerDataset = new Array(prices.length - 1).fill(null);
         
         const lastClosePrice = prices[prices.length - 1];
         mcForecastDataset.push(lastClosePrice);
+        mcUpperDataset.push(lastClosePrice);
+        mcLowerDataset.push(lastClosePrice);
 
         const lastDate = new Date(labels[labels.length - 1]);
         const daysToProject = parseInt(forecastDays) || 30;
@@ -72,61 +77,133 @@ class StockChartManager {
             lowerBand.push(null);
 
             const projectedPrice = lastClosePrice * Math.exp(drift * day);
+            const upperPrice = lastClosePrice * Math.exp(drift * day + (1.96 * dailyStdDev * Math.sqrt(day)));
+            const lowerPrice = lastClosePrice * Math.exp(drift * day - (1.96 * dailyStdDev * Math.sqrt(day)));
+
             mcForecastDataset.push(projectedPrice);
+            mcUpperDataset.push(upperPrice);
+            mcLowerDataset.push(lowerPrice);
         }
 
-        // --- 3. GRÁFICO PRINCIPAL ---
+        // --- 3. GRÁFICO PRINCIPAL SIN GLOW + CON BANDAS DE ERROR MONTE CARLO Y TOOLTIP ---
         const mainCanvas = document.getElementById('mainChart');
         if (mainCanvas) {
             const mainCtx = mainCanvas.getContext('2d');
             if (this.mainChart) this.mainChart.destroy();
 
-            const glowGradient = mainCtx.createLinearGradient(0, 0, 0, 300);
-            glowGradient.addColorStop(0, 'rgba(13, 110, 253, 0.35)');
-            glowGradient.addColorStop(1, 'rgba(13, 110, 253, 0.0)');
-
-            const glowPlugin = {
-                id: 'glowPlugin',
-                beforeDatasetDraw(chart, args) {
-                    if (args.index === 0) {
-                        const { ctx } = chart;
-                        ctx.save();
-                        ctx.shadowColor = 'rgba(13, 110, 253, 0.8)';
-                        ctx.shadowBlur = 10;
-                        ctx.shadowOffsetY = 3;
-                    }
-                },
-                afterDatasetDraw(chart, args) {
-                    if (args.index === 0) {
-                        chart.ctx.restore();
-                    }
-                }
-            };
+            const bgGradient = mainCtx.createLinearGradient(0, 0, 0, 300);
+            bgGradient.addColorStop(0, 'rgba(13, 110, 253, 0.15)');
+            bgGradient.addColorStop(1, 'rgba(13, 110, 253, 0.0)');
 
             this.mainChart = new Chart(mainCtx, {
                 type: 'line',
                 data: {
                     labels: fullLabels,
                     datasets: [
-                        { label: 'Close Price (€)', data: historicalDataset, borderColor: '#0d6efd', backgroundColor: glowGradient, fill: true, pointRadius: 0, borderWidth: 2.5, tension: 0.1 },
-                        { label: 'Monte Carlo Forecast', data: mcForecastDataset, borderColor: '#8b5cf6', borderWidth: 2.5, borderDash: [5, 4], pointRadius: 0, tension: 0.1 },
-                        { label: 'SMA 20', data: sma20, borderColor: '#ffc107', borderDash: [4, 4], pointRadius: 0, borderWidth: 1.5 },
-                        { label: 'Upper Bollinger', data: upperBand, borderColor: '#dc3545', borderDash: [2, 2], pointRadius: 0, borderWidth: 1 },
-                        { label: 'Lower Bollinger', data: lowerBand, borderColor: '#198754', borderDash: [2, 2], pointRadius: 0, borderWidth: 1 }
+                        {
+                            label: 'Precio de Cierre (€)',
+                            data: historicalDataset,
+                            borderColor: '#0d6efd',
+                            backgroundColor: bgGradient,
+                            fill: true,
+                            pointRadius: 0,
+                            pointHoverRadius: 5,
+                            pointHoverBackgroundColor: '#0d6efd',
+                            borderWidth: 2,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Proyección Monte Carlo',
+                            data: mcForecastDataset,
+                            borderColor: '#8b5cf6',
+                            borderWidth: 2,
+                            borderDash: [5, 4],
+                            pointRadius: 0,
+                            pointHoverRadius: 5,
+                            pointHoverBackgroundColor: '#8b5cf6',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Banda Superior MC',
+                            data: mcUpperDataset,
+                            borderColor: 'rgba(139, 92, 246, 0.5)',
+                            borderWidth: 1,
+                            borderDash: [2, 2],
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: 'Banda Inferior MC',
+                            data: mcLowerDataset,
+                            borderColor: 'rgba(139, 92, 246, 0.5)',
+                            borderWidth: 1,
+                            borderDash: [2, 2],
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: 'SMA 20',
+                            data: sma20,
+                            borderColor: '#ffc107',
+                            borderDash: [4, 4],
+                            pointRadius: 0,
+                            borderWidth: 1.5
+                        },
+                        {
+                            label: 'Upper Bollinger',
+                            data: upperBand,
+                            borderColor: '#dc3545',
+                            borderDash: [2, 2],
+                            pointRadius: 0,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Lower Bollinger',
+                            data: lowerBand,
+                            borderColor: '#198754',
+                            borderDash: [2, 2],
+                            pointRadius: 0,
+                            borderWidth: 1
+                        }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top' } }
-                },
-                plugins: [glowPlugin]
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleFont: { size: 13, weight: 'bold' },
+                            bodyFont: { size: 12 },
+                            padding: 10,
+                            cornerRadius: 6,
+                            displayColors: true,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed.y !== null && context.parsed.y !== undefined) {
+                                        label += '€' + context.parsed.y.toFixed(3);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
             });
         }
 
-        // --- 4. INDICADOR DE TENDENCIA (GAUGE) - SOLUCIÓN BUCLE INFINITO ---
+        // --- 4. INDICADOR DE TENDENCIA (GAUGE) CON TAMAÑO FIJO ---
         const gaugeCanvas = document.getElementById('gaugeChart');
         if (gaugeCanvas) {
+            gaugeCanvas.style.maxHeight = '160px';
             const gaugeCtx = gaugeCanvas.getContext('2d');
             if (this.gaugeChart) this.gaugeChart.destroy();
             const isBullish = (metrics.mcTrendPct !== undefined ? metrics.mcTrendPct : (drift >= 0)) >= 0;
@@ -134,7 +211,7 @@ class StockChartManager {
             this.gaugeChart = new Chart(gaugeCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Bullish Signal', 'Bearish Signal'],
+                    labels: ['Señal Alcista', 'Señal Bajista'],
                     datasets: [{
                         data: [isBullish ? 75 : 25, isBullish ? 25 : 75],
                         backgroundColor: ['#198754', '#dc3545'],
@@ -144,7 +221,7 @@ class StockChartManager {
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false, // Cancela el recálculo en bucle de la altura
+                    maintainAspectRatio: false,
                     rotation: -90,
                     circumference: 180,
                     events: [],
@@ -193,7 +270,7 @@ class StockChartManager {
                         },
                         {
                             type: 'bar',
-                            label: 'Histogram',
+                            label: 'Histograma',
                             data: histogram,
                             backgroundColor: histogram.map(v => v >= 0 ? '#198754' : '#dc3545')
                         }
@@ -202,7 +279,27 @@ class StockChartManager {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top' } }
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed.y !== null && context.parsed.y !== undefined) {
+                                        label += context.parsed.y.toFixed(4);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }
