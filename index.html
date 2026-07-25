@@ -1,64 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telefónica Stock Predictor</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>Telefónica (TEF) Stock Predictor</h1>
-            <p class="subtitle">Automated stock price prediction via neural network</p>
-        </header>
+#!/bin/bash
+# scripts/update-data.sh
+# Automated real-time market data fetcher for Telefónica (TEF.MC / BME)
 
-        <section class="metrics-grid">
-            <div class="card">
-                <h3>Last Close Price</h3>
-                <p id="current-price" class="metric-value">--</p>
-                <span id="price-change" class="metric-sub">Updating...</span>
-            </div>
-            <div class="card">
-                <h3>Next Session Prediction</h3>
-                <p id="predicted-price" class="metric-value">--</p>
-                <span id="prediction-trend" class="metric-sub">Calculating...</span>
-            </div>
-            <div class="card">
-                <h3>Accuracy</h3>
-                <p id="model-accuracy" class="metric-value">--</p>
-                <span class="metric-sub">AI Model</span>
-            </div>
-            <div class="card">
-                <h3>Last Update</h3>
-                <p id="last-update" class="metric-value">--</p>
-                <span id="update-status" class="metric-sub">Autoupdate active</span>
-            </div>
-        </section>
+echo "Fetching live stock market data for Telefónica (TEF.MC)..."
 
-        <section class="chart-section">
-            <div class="card chart-card">
-                <h2>Historical & Projected Stock Price</h2>
-                <div class="chart-container">
-                    <canvas id="stockChart"></canvas>
-                </div>
-            </div>
-        </section>
+DATA_FILE="data/predictions.json"
+TEMP_FILE="data/temp.json"
+CURRENT_DATE=$(date +"%Y-%m-%d")
 
-        <section class="details-section">
-            <div class="card">
-                <h2>Model Parameters & Metrics</h2>
-                <div id="model-details" class="details-grid">
-                    <p class="loading-text">Loading real-time data...</p>
-                </div>
-            </div>
-        </section>
-    </div>
+# 1. Fetch official closing / market price for Telefónica (TEF.MC)
+RESPONSE=$(curl -s "https://query1.finance.yahoo.com/v8/finance/chart/TEF.MC?interval=1d&range=1d" \
+  -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
 
-    <script src="assets/js/data-service.js"></script>
-    <script src="assets/js/neural-network.js"></script>
-    <script src="assets/js/charts.js"></script>
-    <script src="assets/js/dashboard.js"></script>
-</body>
-</html>
+# 2. Extract regular market price using jq
+REAL_PRICE=$(echo "$RESPONSE" | jq -r '.chart.result[0].meta.regularMarketPrice')
+
+# Fallback validation if market is closed or API response is null
+if [ "$REAL_PRICE" == "null" ] || [ -z "$REAL_PRICE" ]; then
+  echo "Warning: Could not retrieve live price. Retaining last known price."
+  REAL_PRICE=$(jq -r '.historicalPrices[-1].price' $DATA_FILE)
+fi
+
+echo "Validated close price for $CURRENT_DATE: €$REAL_PRICE"
+
+# 3. Update JSON structure dynamically without duplicate dates
+jq --arg date "$CURRENT_DATE" --argjson price "$REAL_PRICE" \
+   '.lastUpdated = $date | .status = "Autoupdate Active (Real Market Data)" | .historicalPrices += [{"date": $date, "price": $price}] | .historicalPrices |= unique_by(.date) | .historicalPrices |= .[-30:]' \
+   $DATA_FILE > $TEMP_FILE
+
+mv $TEMP_FILE $DATA_FILE
+echo "data/predictions.json updated successfully with real market data."
