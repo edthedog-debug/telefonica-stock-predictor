@@ -20,7 +20,7 @@ class StockChartManager {
         const labels = historical.map(item => item.date);
         const prices = historical.map(item => item.price);
 
-        // --- 1. BANDAS DE BOLLINGER (SMA 20) ---
+        // --- 1. BOLLINGER BANDS (SMA 20) ---
         const period = 20;
         const upperBand = [];
         const lowerBand = [];
@@ -42,7 +42,7 @@ class StockChartManager {
             }
         }
 
-        // --- 2. PROYECCIÓN MONTE CARLO Y BANDAS DE ERROR ---
+        // --- 2. MONTE CARLO PROJECTION & ERROR BANDS ---
         let returns = [];
         for (let i = 1; i < prices.length; i++) {
             returns.push(Math.log(prices[i] / prices[i - 1]));
@@ -85,7 +85,7 @@ class StockChartManager {
             mcLowerDataset.push(lowerPrice);
         }
 
-        // --- 3. GRÁFICO PRINCIPAL SIN GLOW + CON BANDAS DE ERROR MONTE CARLO Y TOOLTIP ---
+        // --- 3. MAIN CHART ---
         const mainCanvas = document.getElementById('mainChart');
         if (mainCanvas) {
             const mainCtx = mainCanvas.getContext('2d');
@@ -101,7 +101,7 @@ class StockChartManager {
                     labels: fullLabels,
                     datasets: [
                         {
-                            label: 'Precio de Cierre (€)',
+                            label: 'Close Price (€)',
                             data: historicalDataset,
                             borderColor: '#0d6efd',
                             backgroundColor: bgGradient,
@@ -113,7 +113,7 @@ class StockChartManager {
                             tension: 0.1
                         },
                         {
-                            label: 'Proyección Monte Carlo',
+                            label: 'Monte Carlo Forecast',
                             data: mcForecastDataset,
                             borderColor: '#8b5cf6',
                             borderWidth: 2,
@@ -124,7 +124,7 @@ class StockChartManager {
                             tension: 0.1
                         },
                         {
-                            label: 'Banda Superior MC',
+                            label: 'Upper MC Band (+95%)',
                             data: mcUpperDataset,
                             borderColor: 'rgba(139, 92, 246, 0.5)',
                             borderWidth: 1,
@@ -133,7 +133,7 @@ class StockChartManager {
                             fill: false
                         },
                         {
-                            label: 'Banda Inferior MC',
+                            label: 'Lower MC Band (-95%)',
                             data: mcLowerDataset,
                             borderColor: 'rgba(139, 92, 246, 0.5)',
                             borderWidth: 1,
@@ -142,7 +142,7 @@ class StockChartManager {
                             fill: false
                         },
                         {
-                            label: 'SMA 20',
+                            label: 'Moving Average (SMA 20)',
                             data: sma20,
                             borderColor: '#ffc107',
                             borderDash: [4, 4],
@@ -150,7 +150,7 @@ class StockChartManager {
                             borderWidth: 1.5
                         },
                         {
-                            label: 'Upper Bollinger',
+                            label: 'Upper Bollinger Band',
                             data: upperBand,
                             borderColor: '#dc3545',
                             borderDash: [2, 2],
@@ -158,7 +158,7 @@ class StockChartManager {
                             borderWidth: 1
                         },
                         {
-                            label: 'Lower Bollinger',
+                            label: 'Lower Bollinger Band',
                             data: lowerBand,
                             borderColor: '#198754',
                             borderDash: [2, 2],
@@ -200,7 +200,7 @@ class StockChartManager {
             });
         }
 
-        // --- 4. INDICADOR DE TENDENCIA (GAUGE) CON TAMAÑO FIJO ---
+        // --- 4. TREND INDICATOR (GAUGE) ---
         const gaugeCanvas = document.getElementById('gaugeChart');
         if (gaugeCanvas) {
             gaugeCanvas.style.maxHeight = '160px';
@@ -211,7 +211,7 @@ class StockChartManager {
             this.gaugeChart = new Chart(gaugeCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Señal Alcista', 'Señal Bajista'],
+                    labels: ['Bullish Signal', 'Bearish Signal'],
                     datasets: [{
                         data: [isBullish ? 75 : 25, isBullish ? 25 : 75],
                         backgroundColor: ['#198754', '#dc3545'],
@@ -234,7 +234,7 @@ class StockChartManager {
             });
         }
 
-        // --- 5. GRÁFICO MACD ---
+        // --- 5. MACD CHART ---
         const macdCtx = document.getElementById('macdChart')?.getContext('2d');
         if (macdCtx) {
             if (this.macdChart) this.macdChart.destroy();
@@ -270,7 +270,7 @@ class StockChartManager {
                         },
                         {
                             type: 'bar',
-                            label: 'Histograma',
+                            label: 'Histogram',
                             data: histogram,
                             backgroundColor: histogram.map(v => v >= 0 ? '#198754' : '#dc3545')
                         }
