@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-07-24",
+  "lastUpdated": "2026-07-25",
   "status": "Autoupdate Active (Real Market Data)",
   "modelMetrics": {
     "ticker": "TEF.MC (BME)",
@@ -9,10 +9,29 @@
     "architecture": "Recurrent NN / LSTM"
   },
   "historicalPrices": [
-    { "date": "2026-07-20", "price": 4.120 },
-    { "date": "2026-07-21", "price": 4.145 },
-    { "date": "2026-07-22", "price": 4.130 },
-    { "date": "2026-07-23", "price": 4.160 },
-    { "date": "2026-07-24", "price": 4.185 }
+    {
+      "date": "2026-07-20",
+      "price": 4.120
+    },
+    {
+      "date": "2026-07-21",
+      "price": 4.145
+    },
+    {
+      "date": "2026-07-22",
+      "price": 4.130
+    },
+    {
+      "date": "2026-07-23",
+      "price": 4.160
+    },
+    {
+      "date": "2026-07-24",
+      "price": 4.185
+    },
+    {
+      "date": "2026-07-25",
+      "price": 3.598
+    }
   ]
 }
