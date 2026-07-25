@@ -1,139 +1,54 @@
-:root {
-    --bg-color: #0f172a;
-    --card-bg: #1e293b;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --accent-blue: #38bdf8;
-    --accent-green: #22c55e;
-    --accent-red: #ef4444;
-    --border-color: #334155;
-}
-
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
+/* Dark Theme for Telefonica Stock Predictor v3.0 */
 body {
-    background-color: var(--bg-color);
-    color: var(--text-primary);
-    padding: 2rem 1rem;
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     min-height: 100vh;
 }
 
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-header {
-    margin-bottom: 2rem;
-    text-align: center;
-}
-
-header h1 {
-    font-size: 2.25rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-    color: var(--accent-blue);
-}
-
-.subtitle {
-    color: var(--text-secondary);
-    font-size: 1rem;
-}
-
-.metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
 .card {
-    background-color: var(--card-bg);
-    border: 1px solid var(--border-color);
+    background-color: #1e293b !important;
+    border: 1px solid #334155 !important;
     border-radius: 0.75rem;
-    padding: 1.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    color: #f8fafc !important;
 }
 
-.card h3 {
-    font-size: 0.875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-secondary);
-    margin-bottom: 0.5rem;
+.card-header {
+    border-bottom: 1px solid #334155 !important;
 }
 
-.metric-value {
-    font-size: 1.875rem;
-    font-weight: 700;
-    margin-bottom: 0.25rem;
+.table {
+    color: #f8fafc !important;
 }
 
-.metric-sub {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
+.table-striped>tbody>tr:nth-of-type(odd)>* {
+    color: #f8fafc !important;
+    background-color: rgba(255, 255, 255, 0.03) !important;
 }
 
-.metric-sub.positive {
-    color: var(--accent-green);
+.table-bordered {
+    border-color: #334155 !important;
 }
 
-.metric-sub.negative {
-    color: var(--accent-red);
+.table-bordered td, .table-bordered th {
+    border-color: #334155 !important;
 }
 
-.chart-section {
-    margin-bottom: 2rem;
+.form-control, .form-select {
+    background-color: #0f172a !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
 }
 
-.chart-card h2 {
-    font-size: 1.25rem;
-    margin-bottom: 1rem;
-    color: var(--text-primary);
+.form-control:focus, .form-select:focus {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
 }
 
 .chart-container {
     position: relative;
-    height: 400px;
     width: 100%;
-}
-
-.details-section h2 {
-    font-size: 1.25rem;
-    margin-bottom: 1rem;
-}
-
-.details-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-}
-
-.detail-item {
-    display: flex;
-    flex-direction: column;
-    padding: 0.75rem;
-    background-color: rgba(255, 255, 255, 0.03);
-    border-radius: 0.5rem;
-}
-
-.detail-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.25rem;
-}
-
-.detail-val {
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.loading-text {
-    color: var(--text-secondary);
-    font-style: italic;
+    min-height: 300px;
 }
