@@ -3,90 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telefónica (TEF) Stock Predictor</title>
+    <meta name="description" content="Telefonica Stock Predictor - Monte Carlo + Neural Network">
+    <title>Telefonica (TEF.MC) - Stock Predictor v3.0</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="assets/css/style.css">
-    <!-- Chart.js for interactive price visualization -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header Section -->
-        <header class="dashboard-header">
-            <div class="header-content">
-                <h1>Telefónica S.A. (TEF.MC) Stock Predictor</h1>
-                <p class="header-subtitle">Real-Time Market Analytics & Neural Network Price Forecasting</p>
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row bg-dark text-white p-3">
+            <div class="col-12 text-center">
+                <h1><i class="bi bi-graph-up-arrow"></i> Telefónica (TEF.MC) - Stock Predictor v3.0</h1>
+                <p class="text-muted mb-0">Monte Carlo • Neural Network • MACD • Bollinger • Backtesting</p>
+                <small class="text-info">BME Exchange | ISIN: ES0178430E18 | <a href="https://github.com/edthedog-debug/telefonica-stock-predictor" class="text-info" target="_blank">edthedog-debug</a></small>
             </div>
-            <div class="header-status">
-                <span class="status-badge" id="update-status">BME Live Sync</span>
-                <span class="status-date">Last Updated: <strong id="last-update">--</strong></span>
+        </div>
+        
+        <!-- Controls -->
+        <div class="row mt-3 mb-3">
+            <div class="col-md-3">
+                <label class="form-label"><i class="bi bi-calendar-check"></i> Start Date</label>
+                <input type="date" id="startDate" class="form-control">
             </div>
-        </header>
-
-        <!-- Metrics Grid -->
-        <section class="metrics-section">
-            <div class="metric-card">
-                <div class="card-header">
-                    <h3>Last Close Price</h3>
-                    <span class="ticker-badge">TEF.MC</span>
-                </div>
-                <div class="card-body">
-                    <p class="metric-value" id="current-price">--</p>
-                    <p class="metric-sub" id="price-change">Loading market data...</p>
-                </div>
+            <div class="col-md-3">
+                <label class="form-label"><i class="bi bi-calendar-x"></i> End Date</label>
+                <input type="date" id="endDate" class="form-control">
             </div>
-
-            <div class="metric-card highlight">
-                <div class="card-header">
-                    <h3>Next Session Forecast</h3>
-                    <span class="ai-badge">AI Model</span>
-                </div>
-                <div class="card-body">
-                    <p class="metric-value" id="predicted-price">--</p>
-                    <p class="metric-sub" id="prediction-trend">Calculating trend...</p>
-                </div>
+            <div class="col-md-2">
+                <label class="form-label"><i class="bi bi-forward"></i> Forecast Days</label>
+                <select id="forecastDays" class="form-control">
+                    <option value="7">7 Days</option><option value="14">14 Days</option>
+                    <option value="30" selected>30 Days</option><option value="60">60 Days</option><option value="90">90 Days</option>
+                </select>
             </div>
-
-            <div class="metric-card">
-                <div class="card-header">
-                    <h3>Model Confidence</h3>
-                    <span class="info-badge">LSTM NN</span>
-                </div>
-                <div class="card-body">
-                    <p class="metric-value" id="model-accuracy">--</p>
-                    <p class="metric-sub">Historical Accuracy Rate</p>
-                </div>
+            <div class="col-md-2">
+                <label class="form-label"><i class="bi bi-dice-6"></i> Simulations</label>
+                <select id="simulations" class="form-control">
+                    <option value="500">500</option><option value="1000" selected>1,000</option>
+                    <option value="5000">5,000</option><option value="10000">10,000</option>
+                </select>
             </div>
-        </section>
-
-        <!-- Interactive Chart Section -->
-        <section class="chart-section">
-            <div class="card chart-card">
-                <div class="card-header">
-                    <h2>Historical & Projected Price Trend</h2>
-                </div>
-                <div class="chart-wrapper">
-                    <canvas id="stockChart"></canvas>
+            <div class="col-md-2 d-flex align-items-end">
+                <button id="updateBtn" class="btn btn-primary w-100">🔄 Run Analysis</button>
+            </div>
+        </div>
+        
+        <!-- Main Charts Row -->
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white"><h5 class="mb-0">📈 Price + Bollinger Bands + Monte Carlo Forecast</h5></div>
+                    <div class="card-body"><div class="chart-container"><canvas id="mainChart"></canvas></div></div>
                 </div>
             </div>
-        </section>
-
-        <!-- Technical Parameters & Metadata -->
-        <section class="details-section">
-            <div class="card details-card">
-                <div class="card-header">
-                    <h2>Model Indicators & Market Metadata</h2>
-                </div>
-                <div class="details-grid" id="model-details">
-                    <p class="loading-text">Fetching dynamic parameters...</p>
+            <div class="col-md-4">
+                <div class="card shadow">
+                    <div class="card-header bg-info text-white"><h5 class="mb-0">📊 Trend Indicator</h5></div>
+                    <div class="card-body text-center">
+                        <canvas id="gaugeChart" height="250"></canvas>
+                        <div id="currentSignal" class="mt-3">
+                            <h2 id="signalText" class="display-6 fw-bold">LOADING...</h2>
+                            <div id="signalDetails" class="text-muted">Analyzing data...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </section>
+        </div>
+        
+        <!-- ML vs Monte Carlo Row -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header text-white" style="background: #8b5cf6 !important;">
+                        <h5 class="mb-0">🤖 Machine Learning vs Monte Carlo Comparison</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center" id="mlComparison">
+                            <div class="col-md-4">
+                                <h6>📊 Monte Carlo (30d)</h6>
+                                <h4 id="mcPrice" class="text-primary">-</h4>
+                                <small id="mcTrend" class="text-muted">-</small>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>🤖 Neural Network (30d)</h6>
+                                <h4 id="nnPrice" style="color: #8b5cf6;">-</h4>
+                                <small id="nnTrend" class="text-muted">-</small>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>📈 Consensus</h6>
+                                <h4 id="consensus" class="fw-bold">-</h4>
+                                <small id="consensusLabel" class="text-muted">-</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- MACD Chart Row -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header bg-dark text-white"><h5 class="mb-0">📉 MACD (Moving Average Convergence Divergence)</h5></div>
+                    <div class="card-body">
+                        <div class="chart-container" style="height: 250px;" id="macdChartContainer">
+                            <canvas id="macdChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Signals and Stats Row -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white"><h5 class="mb-0">📋 Trading Signals (MACD + Bollinger + RSI + SMA)</h5></div>
+                    <div class="card-body">
+                        <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                            <table class="table table-striped table-hover table-sm">
+                                <thead class="table-dark">
+                                    <tr><th>Date</th><th>Type</th><th>Price</th><th>Reason</th><th>RSI</th></tr>
+                                </thead>
+                                <tbody id="signalsBody"><tr><td colspan="5" class="text-center">Loading...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-warning text-dark"><h5 class="mb-0">📐 Statistics & Indicators</h5></div>
+                    <div class="card-body">
+                        <table class="table table-bordered table-hover table-sm">
+                            <tbody>
+                                <tr><td><strong>Current Price:</strong></td><td id="currentPrice" class="text-end">-</td></tr>
+                                <tr><td><strong>Median Forecast:</strong></td><td id="medianPrice" class="text-end">-</td></tr>
+                                <tr><td><strong>95% Confidence:</strong></td><td id="confidenceInterval" class="text-end">-</td></tr>
+                                <tr><td><strong>Volatility (σ):</strong></td><td id="volatility" class="text-end">-</td></tr>
+                                <tr><td><strong>Expected Return:</strong></td><td id="expectedReturn" class="text-end">-</td></tr>
+                                <tr><td><strong>Bollinger Upper:</strong></td><td id="bollUpper" class="text-end">-</td></tr>
+                                <tr><td><strong>Bollinger Lower:</strong></td><td id="bollLower" class="text-end">-</td></tr>
+                                <tr><td><strong>MACD Value:</strong></td><td id="macdValue" class="text-end">-</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="mt-2">
+                            <h6 class="border-bottom pb-1">Distribution</h6>
+                            <div class="row text-center">
+                                <div class="col-4"><small>Bearish</small><br><span id="bearishProb" class="fw-bold text-danger">-</span></div>
+                                <div class="col-4"><small>Neutral</small><br><span id="neutralProb" class="fw-bold text-secondary">-</span></div>
+                                <div class="col-4"><small>Bullish</small><br><span id="bullishProb" class="fw-bold text-success">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Backtesting Row -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header text-white" style="background: #6f42c1 !important;">
+                        <h5 class="mb-0">🧪 Strategy Backtesting Results</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center" id="backtestResults">
+                            <div class="col-md-3"><h6>Initial Capital</h6><h4 class="text-primary">€10,000</h4></div>
+                            <div class="col-md-3"><h6>Final Capital</h6><h4 id="btFinalCapital" class="text-success">-</h4></div>
+                            <div class="col-md-3"><h6>Total Return</h6><h4 id="btReturn" class="fw-bold">-</h4></div>
+                            <div class="col-md-3"><h6>Win Rate</h6><h4 id="btWinRate" class="fw-bold">-</h4></div>
+                        </div>
+                        <div class="table-responsive mt-3" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-dark"><tr><th>Entry</th><th>Exit</th><th>Entry Price</th><th>Exit Price</th><th>Profit</th><th>%</th></tr></thead>
+                                <tbody id="btTradesBody"><tr><td colspan="6" class="text-center">Run analysis to see backtest</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="row mt-4"><div class="col-12"><div class="alert alert-info text-center"><strong>Disclaimer:</strong> Educational tool. Not financial advice.</div></div></div>
     </div>
-
-    <!-- Application Modules -->
-    <script src="assets/js/data-service.js"></script>
+    
     <script src="assets/js/neural-network.js"></script>
+    <script src="assets/js/data-service.js"></script>
     <script src="assets/js/charts.js"></script>
     <script src="assets/js/dashboard.js"></script>
 </body>
+<script data-goatcounter="https://edthedog-debug6.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </html>
