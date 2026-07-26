@@ -1,4 +1,4 @@
-# 📈 Telefónica Stock Predictor - Monte Carlo Simulation
+# 📈 Telefónica Stock Predictor - Monte Carlo & Technical Analysis
 
 [![GitHub Pages](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-brightgreen?style=for-the-badge&logo=github)](https://edthedog-debug.github.io/telefonica-stock-predictor/)
 [![Daily Update](https://img.shields.io/badge/Auto%20Update-Daily-blue?style=for-the-badge&logo=githubactions)](https://github.com/edthedog-debug/telefonica-stock-predictor/actions)
@@ -9,13 +9,13 @@
 
 ## 🎯 What is this?
 
-A **hybrid financial engineering model** for predicting **Telefónica (TEF.MC)** stock prices using:
+A **hybrid quantitative financial engineering dashboard** designed to analyze and predict **Telefónica (TEF.MC)** stock price movements using:
 
-- 🎲 **Monte Carlo Simulation** (Geometric Brownian Motion)
-- 🤖 **Neural Network** (Machine Learning predictions)
-- 📊 **Technical Analysis** (SMA, RSI, MACD, Bollinger Bands)
-- 🧪 **Backtesting Engine** (Strategy performance validation)
-- 🔄 **Automated Daily Updates** with REAL market data from Google Finance
+- 🎲 **Monte Carlo Simulation** (Geometric Brownian Motion with 95% Confidence Intervals)
+- 📊 **Technical Analysis Indicators** (Bollinger Bands, SMA 20, MACD, RSI)
+- 🎯 **Interactive Trend Indicator Gauge** (Real-time Bullish/Bearish sentiment)
+- 🧪 **Quantitative Backtesting Engine** (Multivariate trade execution & logging)
+- 🔄 **Automated Daily Market Updates** with real-time data integration.
 
 ---
 
@@ -25,52 +25,54 @@ A **hybrid financial engineering model** for predicting **Telefónica (TEF.MC)**
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-### Prediction Models
+### Analytics & Forecasting
 | Feature | Description |
 |---------|-------------|
-| 🎲 **Monte Carlo** | 1,000 simulations with 95% confidence intervals |
-| 🤖 **Neural Network** | ML predictions compared side-by-side with Monte Carlo |
-| 📈 **Consensus** | Combined MC + NN agreement signal |
+| 🎲 **Monte Carlo Forecast** | Projected future prices with upper (+95%) and lower (-95%) confidence error bands |
+| 📈 **Trend Indicator (Gauge)** | Semicircular speedometer displaying real-time market sentiment based on drift analysis |
+| 🔍 **Interactive Tooltips** | Hover/touch crosshair mode showing precise historical, projected, and technical values |
 
 ### Technical Indicators
 | Feature | Description |
 |---------|-------------|
-| 📊 **Bollinger Bands** | 20-period, 2σ bands overlaid on price chart |
-| 📉 **MACD** | Full MACD chart (Line, Signal, Histogram) |
-| 📋 **SMA** | 20 & 50 period Simple Moving Averages |
-| 📊 **RSI** | 14-period Relative Strength Index |
+| 📊 **Bollinger Bands** | 20-period moving average ($\pm2\sigma$) overlaid directly on the price series |
+| 📈 **Moving Average (SMA 20)** | 20-period Simple Moving Average baseline |
+| 📉 **Full MACD Oscillator** | Complete sub-chart rendering MACD Line, Signal Line (EMA 9), and Histogram |
+| 📊 **RSI (14)** | Relative Strength Index integrated into the trading decision framework |
 
-### Trading Signals
-| Signal | Condition | Action |
-|--------|-----------|--------|
-| 🟢 **Golden Cross** | SMA20 crosses above SMA50 | ENTRY |
-| 🔴 **Death Cross** | SMA20 crosses below SMA50 | EXIT |
-| 🟢 **RSI Oversold** | RSI(14) falls below 30 | ENTRY |
-| 🔴 **RSI Overbought** | RSI(14) rises above 70 | EXIT |
-| 🟢 **MACD Bullish Cross** | MACD line crosses above Signal line | ENTRY |
-| 🔴 **MACD Bearish Cross** | MACD line crosses below Signal line | EXIT |
-| 🟢 **Bollinger Lower** | Price touches Lower Band | ENTRY |
-| 🔴 **Bollinger Upper** | Price touches Upper Band | EXIT |
+### Trading Signals & Decision Engine
+| Signal | Condition | Operational Rule |
+|--------|-----------|------------------|
+| 🟢 **Bullish Trend / Buy** | Price $> \text{SMA}_{20}$ AND Monte Carlo Drift $> 0$ | Entry signal triggered |
+| 🔴 **Bearish Trend / Sell** | Price $< \text{SMA}_{20}$ OR Monte Carlo Drift $< 0$ | Exit / Liquidation signal |
+| 📊 **Real-time Diagnostic** | Dynamic single-card reading calculated instantly from the latest closing price | Real-time action recommendation |
 
-### Dashboard Tools
+### Quantitative Backtesting
 | Feature | Description |
 |---------|-------------|
-| 📈 **Trend Gauge** | Bullish/Bearish speedometer (0-100%) |
-| 🧪 **Backtesting** | Strategy simulation with €10,000 initial capital |
-| 🔄 **Date Filter** | All indicators recalculate when changing date range |
-| 📊 **Statistics** | Volatility, expected return, probability distribution |
-| 📱 **Responsive** | Works on desktop, tablet, and mobile |
+| 🧪 **Historical Simulation** | Evaluates rule execution across the selected historical timeframe |
+| 📋 **Trade Log** | Complete record of past entry dates, exit dates, entry prices, exit prices, and profit/loss |
+| 📊 **Performance Metrics** | Calculates Total Trades, Win Rate %, and Cumulative Return % |
 
-### Automation
+### Interface & Data Management
 | Feature | Description |
 |---------|-------------|
-| 🤖 **Daily Updates** | Auto-fetch real closing prices every trading day |
-| 💾 **Real Data** | Historical data from Google Finance (2020-present) |
+| 🔄 **Dynamic Range Selector** | Choose between 1M, 3M, 6M, 1Y, 5Y, or MAX; all indicators and simulations recalculate instantly |
+| 📱 **Responsive Design** | Custom layout optimized for desktop, tablet, and mobile browsers |
+| 🌐 **Localization** | Clean interface available in English |
 
 ---
 
-## 🛠️ Methodology
+## 🛠️ Architecture & Tech Stack
 
-### Monte Carlo Model
+* **Frontend:** HTML5, CSS3, JavaScript (ES6+ Modules)
+* **Visualization:** Chart.js (with custom canvas scaling and responsive aspect ratios)
+* **Deployment & CI/CD:** GitHub Pages + GitHub Actions for automated daily sync
+
+---
+
+## 📄 License
+
+This project is open-source and available under the **MIT License**.
