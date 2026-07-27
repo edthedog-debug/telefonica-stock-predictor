@@ -1,31 +1,281 @@
-name: Daily Stock Data Update
-
-on:
-  schedule:
-    # Runs Monday through Friday at 18:00 UTC (after market close)
-    - cron: '0 18 * * 1-5'
-  workflow_dispatch: # Allows manual run anytime from GitHub Actions tab
-
-jobs:
-  update-data:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Make update script executable
-        run: chmod +x scripts/update-data.sh
-
-      - name: Execute update script
-        run: ./scripts/update-data.sh
-
-      - name: Commit and push changes
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action Bot"
-          git add data/predictions.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update stock prediction data [skip ci]" && git push)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Telefonica Stock Predictor - Monte Carlo + Neural Network">
+    <title>Telefonica (TEF.MC) - Stock Predictor v3.0</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row bg-dark text-white p-3">
+            <div class="col-12 text-center">
+                <h1><i class="bi bi-graph-up-arrow"></i> Telefónica (TEF.MC) - Stock Predictor v3.0</h1>
+                <p class="text-muted mb-0">Monte Carlo • Neural Network • MACD • Bollinger • Backtesting</p>
+                <small class="text-info">BME Exchange | ISIN: ES0178430E18 | <a href="https://github.com/edthedog-debug/telefonica-stock-predictor" class="text-info" target="_blank">edthedog-debug</a></small>
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="row mt-3 mb-3">
+            <div class="col-md-3">
+                <label class="form-label"><i class="bi bi-calendar-check"></i> Start Date</label>
+                <input type="date" id="startDate" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label"><i class="bi bi-calendar-x"></i> End Date</label>
+                <input type="date" id="endDate" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label"><i class="bi bi-forward"></i> Forecast Days</label>
+                <select id="forecastDays" class="form-control">
+                    <option value="7">7 Days</option><option value="14">14 Days</option>
+                    <option value="30" selected>30 Days</option><option value="60">60 Days</option><option value="90">90 Days</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label"><i class="bi bi-dice-6"></i> Simulations</label>
+                <select id="simulations" class="form-control">
+                    <option value="500">500</option><option value="1000" selected>1,000</option>
+                    <option value="5000">5,000</option><option value="10000">10,000</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button id="updateBtn" class="btn btn-primary w-100">🔄 Run Analysis</button>
+            </div>
+        </div>
+        
+        <!-- Main Charts Row -->
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">📈 Price + Bollinger Bands + Monte Carlo Forecast</h5>
+                        <span class="text-white" style="cursor: pointer;" title="How it works: Displays historical prices alongside Bollinger Bands (volatility limits) and Monte Carlo paths forecasting future asset trajectories. Interpretation: Prices touching the lower band indicate potential buy signals (oversold), while upper band touches signal overbought/sell territory.">
+                            <i class="bi bi-question-circle"></i>
+                        </span>
+                    </div>
+                    <div class="card-body"><div class="chart-container"><canvas id="mainChart"></canvas></div></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">📊 Trend Indicator</h5>
+                        <span class="text-white" style="cursor: pointer;" title="How it works: Evaluates overall directional momentum using projected percentage growth. Interpretation: A positive percentage and bullish gauge suggest upward trend continuation (Buy), whereas negative values warn of bearish downturns (Sell).">
+                            <i class="bi bi-question-circle"></i>
+                        </span>
+                    </div>
+                    <div class="card-body text-center">
+                        <canvas id="gaugeChart" height="250"></canvas>
+                        <div id="currentSignal" class="mt-3">
+                            <h2 id="signalText" class="display-6 fw-bold">LOADING...</h2>
+                            <div id="signalDetails" class="text-muted">Analyzing data...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Advanced Risk Analytics Metrics Row -->
+        <div class="row mt-4">
+            <div class="col-md-3 mb-3 mb-md-0">
+                <div class="card shadow text-center p-3 border-0">
+                    <div class="d-flex justify-content-center align-items-center gap-1">
+                        <h6 class="text-muted small mb-0">Value at Risk (VaR 95%)</h6>
+                        <span class="text-muted" style="cursor: pointer; font-size: 0.85rem;" title="How it works: Estimates the maximum expected loss over a specific horizon with 95% confidence. Interpretation: Higher percentages indicate higher tail risk; lower VaR is preferable for capital preservation.">
+                            <i class="bi bi-question-circle"></i>
+                        </span>
+                    </div>
+                    <h3 id="var-metric" class="fw-bold text-danger mb-0 mt-2">-</h3>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+                <div class="card shadow text-center p-3 border-0">
+                    <div class="d-flex justify-content-center align-items-center gap-1">
+                        <h6 class="text-muted small mb-0">Max Drawdown</h6>
+                        <span class="text-muted" style="cursor: pointer; font-size: 0.85rem;" title="How it works: Measures the largest peak-to-trough drop historical prices experienced. Interpretation: High drawdowns reveal severe historical volatility and capital vulnerability during market corrections.">
+                            <i class="bi bi-question-circle"></i>
+                        </span>
+                    </div>
+                    <h3 id="drawdown-metric" class="fw-bold text-warning mb-0 mt-2">-</h3>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+                <div class="card shadow text-center p-3 border-0">
+                    <div class="d-flex justify-content-center align-items-center gap-1">
+                        <h6 class="text-muted small mb-0">Sharpe Ratio</h6>
+                        <span class="text-muted" style="cursor: pointer; font-size: 0.85rem;" title="How it works: Computes risk-adjusted returns relative to a risk-free rate. Interpretation: Values above 1.0 indicate acceptable-to-good risk-adjusted performance, making the strategy more attractive for entry.">
+                            <i class="bi bi-question-circle"></i>
+                        </span>
+                    </div>
+                    <h3 id="sharpe-metric" class="fw-bold text-primary mb-0 mt-2">-</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow text-center p-3 border-0">
+                    <div class="d-flex justify-content-center align-items-center gap-1">
+                        <h6 class="text-muted small mb-0">Composite Signal Score</h6>
+                        <span class="text-muted" style="cursor: pointer; font-size: 0.85rem;" title="How it works: Combines momentum, moving averages, and forecasts into a 0-100 scale score. Interpretation: Scores above 50 lean towards strong Buy consensus, while scores below 50 suggest Sell or cautious stances.">
+                            <i class="bi bi-question-circle"></i>
+                        </span>
+                    </div>
+                    <h3 id="score-metric" class="fw-bold text-success mb-0 mt-2">-</h3>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ML vs Monte Carlo Row -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: #8b5cf6 !important;">
+                        <h5 class="mb-0">🤖 Machine Learning vs Monte Carlo Comparison</h5>
+                        <span class="text-white" style="cursor: pointer;" title="How it works: Contrasts probabilistic Monte Carlo projections against neural network predictive modeling. Interpretation: When both models converge on a positive return trend, confidence for a Buy decision increases significantly.">
+                            <i class="bi bi-question-circle"></i>
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center" id="mlComparison">
+                            <div class="col-md-4">
+                                <h6>📊 Monte Carlo (30d)</h6>
+                                <h4 id="mcPrice" class="text-primary">-</h4>
+                                <small id="mcTrend" class="text-muted">-</small>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>🤖 Neural Network (30d)</h6>
+                                <h4 id="nnPrice" style="color: #8b5cf6;">-</h4>
+                                <small id="nnTrend" class="text-muted">-</small>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>📈 Consensus</h6>
+                                <h4 id="consensus" class="fw-bold">-</h4>
+                                <small id="consensusLabel" class="text-muted">-</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- MACD Chart Row -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">📉 MACD (Moving Average Convergence Divergence)</h5>
+                        <span class="text-white" style="cursor: pointer;" title="How it works: Tracks the relationship between two exponential moving averages to highlight momentum shifts. Interpretation: A bullish MACD crossover above the signal line points to a Buy entry, while a cross below warns of a Sell signal.">
+                            <i class="bi bi-question-circle"></i>
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container" style="height: 250px;" id="macdChartContainer">
+                            <canvas id="macdChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Signals and Stats Row -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">📋 Trading Signals (MACD + Bollinger + RSI + SMA)</h5>
+                        <span class="text-white" style="cursor: pointer;" title="How it works: Filters historical crossovers and indicator rules to generate automated execution triggers. Interpretation: Look at the 'Type' column to spot clear BUY or SELL action markers based on combined indicator logic.">
+                            <i class="bi bi-question-circle"></i>
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                            <table class="table table-striped table-hover table-sm">
+                                <thead class="table-dark">
+                                    <tr><th>Date</th><th>Type</th><th>Price</th><th>Reason</th><th>RSI</th></tr>
+                                </thead>
+                                <tbody id="signalsBody"><tr><td colspan="5" class="text-center">Loading...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">📐 Statistics & Indicators</h5>
+                        <span class="text-dark" style="cursor: pointer;" title="How it works: Aggregates vital statistical metrics including volatility, expected performance bounds, and distribution odds. Interpretation: High expected return paired with low volatility and bullish probability skew favors long positions.">
+                            <i class="bi bi-question-circle"></i>
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-bordered table-hover table-sm">
+                            <tbody>
+                                <tr><td><strong>Current Price:</strong></td><td id="currentPrice" class="text-end">-</td></tr>
+                                <tr><td><strong>Median Forecast:</strong></td><td id="medianPrice" class="text-end">-</td></tr>
+                                <tr><td><strong>95% Confidence:</strong></td><td id="confidenceInterval" class="text-end">-</td></tr>
+                                <tr><td><strong>Volatility (σ):</strong></td><td id="volatility" class="text-end">-</td></tr>
+                                <tr><td><strong>Expected Return:</strong></td><td id="expectedReturn" class="text-end">-</td></tr>
+                                <tr><td><strong>Bollinger Upper:</strong></td><td id="bollUpper" class="text-end">-</td></tr>
+                                <tr><td><strong>Bollinger Lower:</strong></td><td id="bollLower" class="text-end">-</td></tr>
+                                <tr><td><strong>MACD Value:</strong></td><td id="macdValue" class="text-end">-</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="mt-2">
+                            <h6 class="border-bottom pb-1">Distribution</h6>
+                            <div class="row text-center">
+                                <div class="col-4"><small>Bearish</small><br><span id="bearishProb" class="fw-bold text-danger">-</span></div>
+                                <div class="col-4"><small>Neutral</small><br><span id="neutralProb" class="fw-bold text-secondary">-</span></div>
+                                <div class="col-4"><small>Bullish</small><br><span id="bullishProb" class="fw-bold text-success">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Backtesting Row -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: #6f42c1 !important;">
+                        <h5 class="mb-0">🧪 Strategy Backtesting Results</h5>
+                        <span class="text-white" style="cursor: pointer;" title="How it works: Simulates historical rule application (SMA20 Crossover) starting with €10,000 capital. Interpretation: High win rates and positive total returns confirm strategy viability before deploying capital in live markets.">
+                            <i class="bi bi-question-circle"></i>
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center" id="backtestResults">
+                            <div class="col-md-3"><h6>Initial Capital</h6><h4 class="text-primary">€10,000</h4></div>
+                            <div class="col-md-3"><h6>Final Capital</h6><h4 id="btFinalCapital" class="text-success">-</h4></div>
+                            <div class="col-md-3"><h6>Total Return</h6><h4 id="btReturn" class="fw-bold">-</h4></div>
+                            <div class="col-md-3"><h6>Win Rate</h6><h4 id="btWinRate" class="fw-bold">-</h4></div>
+                        </div>
+                        <div class="table-responsive mt-3" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-dark"><tr><th>Entry</th><th>Exit</th><th>Entry Price</th><th>Exit Price</th><th>Profit</th><th>%</th></tr></thead>
+                                <tbody id="btTradesBody"><tr><td colspan="6" class="text-center">Run analysis to see backtest</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="row mt-4"><div class="col-12"><div class="alert alert-info text-center"><strong>Disclaimer:</strong> Educational tool. Not financial advice.</div></div></div>
+    </div>
+    
+    <script src="assets/js/neural-network.js"></script>
+    <script src="assets/js/data-service.js"></script>
+    <script src="assets/js/charts.js"></script>
+    <script type="module" src="assets/js/dashboard.js"></script>
+</body>
+<script data-goatcounter="https://edthedog-debug6.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+</html>
