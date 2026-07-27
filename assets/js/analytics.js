@@ -1,103 +1,69 @@
 /**
- * Quantitative Risk Analytics & Scoring Module
- * Extends the existing dashboard with risk management metrics without modifying core files.
+ * Risk Analytics & Quantitative Scoring Engine for Stock Predictor v3.0
  */
-
-class RiskAnalytics {
-    /**
-     * Calculates the Value at Risk (VaR) using the Variance-Covariance Method.
-     * 
-     * @param {Array<number>} prices - Historical closing prices
-     * @param {number} confidenceLevel - Z-score (1.645 for 95%)
-     * @param {number} days - Time horizon in days
-     * @returns {number} VaR as a percentage
-     */
-    static calculateVaR(prices, confidenceLevel = 1.645, days = 30) {
+const RiskAnalytics = {
+    // 1. Calculate Value at Risk (VaR 95%) using parametric approach
+    calculateVaR(prices, zScore = 1.645, horizonDays = 30) {
         if (!prices || prices.length < 2) return 0;
-        
         let returns = [];
         for (let i = 1; i < prices.length; i++) {
             returns.push(Math.log(prices[i] / prices[i - 1]));
         }
-        
-        const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
-        const variance = returns.reduce((a, b) => a + Math.pow(b - meanReturn, 2), 0) / returns.length;
-        const stdDev = Math.sqrt(variance);
-        
-        const expectedReturn = meanReturn * days;
-        const riskVolatility = stdDev * Math.sqrt(days);
-        
-        const varPercentage = expectedReturn - (confidenceLevel * riskVolatility);
-        return varPercentage * 100; 
-    }
+        const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+        const variance = returns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / returns.length;
+        const dailyStdDev = Math.sqrt(variance);
+        const horizonStdDev = dailyStdDev * Math.sqrt(horizonDays);
+        const varPct = (zScore * horizonStdDev - mean * horizonDays) * 100;
+        return Math.max(0, varPct);
+    },
 
-    /**
-     * Calculates the Sharpe Ratio for the strategy.
-     * 
-     * @param {Array<Object>} trades - Array of trade objects containing 'profitPct'
-     * @param {number} riskFreeRate - Annual risk-free rate
-     * @returns {number} Sharpe Ratio
-     */
-    static calculateSharpeRatio(trades, riskFreeRate = 0.03) {
-        if (!trades || trades.length === 0) return 0;
-        
-        const tradeReturns = trades.map(t => t.profitPct);
-        const averageReturn = tradeReturns.reduce((a, b) => a + b, 0) / tradeReturns.length;
-        
-        const variance = tradeReturns.reduce((a, b) => a + Math.pow(b - averageReturn, 2), 0) / tradeReturns.length;
-        const stdDev = Math.sqrt(variance);
-        
-        if (stdDev === 0) return 0;
-        
-        const adjustedRiskFree = riskFreeRate / 252; 
-        return (averageReturn - adjustedRiskFree) / stdDev;
-    }
-
-    /**
-     * Calculates the Maximum Drawdown (Max DD).
-     * 
-     * @param {Array<number>} prices - Historical prices
-     * @returns {number} Maximum Drawdown as a positive percentage
-     */
-    static calculateMaxDrawdown(prices) {
-        if (!prices || prices.length === 0) return 0;
-        
-        let maxPrice = prices[0];
-        let maxDrawdown = 0;
-        
-        for (let i = 1; i < prices.length; i++) {
-            if (prices[i] > maxPrice) {
-                maxPrice = prices[i];
+    // 2. Calculate Maximum Drawdown from historical price series
+    calculateMaxDrawdown(prices) {
+        if (!prices || prices.length < 2) return 0;
+        let maxPeak = prices[0];
+        let maxDd = 0;
+        for (let i = 0; i < prices.length; i++) {
+            if (prices[i] > maxPeak) {
+                maxPeak = prices[i];
             }
-            const drawdown = (maxPrice - prices[i]) / maxPrice;
-            if (drawdown > maxDrawdown) {
-                maxDrawdown = drawdown;
+            const dd = (maxPeak - prices[i]) / maxPeak;
+            if (dd > maxDd) {
+                maxDd = dd;
             }
         }
-        return maxDrawdown * 100; 
-    }
+        return maxDd * 100;
+    },
 
-    /**
-     * Calculates a composite signal score from 0 to 100 based on multiple indicators.
-     * 
-     * @param {number} currentPrice - Latest closing price
-     * @param {number} sma20 - Current SMA 20
-     * @param {number} rsi - Current RSI
-     * @param {number} macdLine - Current MACD Line
-     * @param {number} signalLine - Current MACD Signal Line
-     * @param {number} drift - Monte Carlo drift
-     * @returns {number} Score (0-100)
-     */
-    static getSignalScore(currentPrice, sma20, rsi, macdLine, signalLine, drift) {
-        let score = 0;
+    // 3. Calculate Sharpe Ratio based on backtested trades
+    calculateSharpeRatio(trades, riskFreeRate = 0.02) {
+        if (!trades || trades.length === 0) return 0;
+        let returns = trades.map(t => t.profitPct / 100);
+        const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
+        const annualizedReturn = meanReturn * 12; // Assuming ~12 trades/year scaling
+        const variance = returns.reduce((a, b) => a + Math.pow(b - meanReturn, 2), 0) / (returns.length > 1 ? returns.length - 1 : 1);
+        const stdDev = Math.sqrt(variance);
+        if (stdDev === 0) return 0;
+        return (annualizedReturn - riskFreeRate) / stdDev;
+    },
+
+    // 4. Calculate Composite Signal Score (0 to 100 scale)
+    getSignalScore(currentPrice, sma20, rsi, macdLine, signalLine, mcTrendPct) {
+        let score = 50; // Neutral baseline
         
-        if (currentPrice > sma20) score += 25;
-        if (rsi >= 30 && rsi <= 65) score += 25;
-        if (macdLine > signalLine) score += 25;
-        if (drift > 0) score += 25;
-        
-        return score;
+        // Price vs SMA20 trend component (+/- 20 pts)
+        if (currentPrice > sma20) score += 20;
+        else score -= 20;
+
+        // Monte Carlo prediction component (+/- 20 pts)
+        if (mcTrendPct > 0) score += Math.min(20, mcTrendPct * 2);
+        else score -= Math.min(20, Math.abs(mcTrendPct) * 2);
+
+        // MACD momentum component (+/- 10 pts)
+        if (macdLine >= signalLine) score += 10;
+        else score -= 10;
+
+        return Math.max(0, Math.min(100, Math.round(score)));
     }
-}
+};
 
 export default RiskAnalytics;
