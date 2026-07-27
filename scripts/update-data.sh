@@ -9,10 +9,15 @@ import urllib.request
 import json
 import time
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # Timestamp for January 1, 2025 (1735689600)
-url = f'https://query1.finance.yahoo.com/v8/finance/chart/TEF.MC?period1=1735689600&period2={int(time.time())}&interval=1d'
+# Force period2 to end of today in UTC to ensure today's price is captured
+now_utc = datetime.now(timezone.utc)
+end_of_today_utc = datetime(now_utc.year, now_utc.month, now_utc.day, 23, 59, 59, tzinfo=timezone.utc)
+period2 = int(end_of_today_utc.timestamp())
+
+url = f'https://query1.finance.yahoo.com/v8/finance/chart/TEF.MC?period1=1735689600&period2={period2}&interval=1d'
 req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
 
 try:
