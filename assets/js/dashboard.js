@@ -3,7 +3,7 @@ import RiskAnalytics from './analytics.js';
 document.addEventListener('DOMContentLoaded', async () => {
     let rawHistoricalData = [];
 
-    // Fechas por defecto: Hoy y Hace 1 Año
+    // Default dates: Today and 1 Year Ago
     const startDateInput = document.getElementById('startDate');
     const endDateInput = document.getElementById('endDate');
     
@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (endDateInput) endDateInput.value = today.toISOString().split('T')[0];
     if (startDateInput) startDateInput.value = oneYearAgo.toISOString().split('T')[0];
 
-    // Motor de Backtesting basado en cruces de Media Móvil (SMA20)
+    // Backtesting engine based on Moving Average crossovers (SMA20)
     function runStrategyBacktest(historical) {
         if (!historical || historical.length < 25) {
             return { finalCapital: 10000, totalReturnPct: 0, winRatePct: 0, trades: [] };
@@ -25,21 +25,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         let position = null;
         const trades = [];
 
-        // Recorrido de los datos históricos
+        // Loop through historical data
         for (let i = 20; i < historical.length; i++) {
             const slice = historical.slice(i - 20, i);
             const sma20 = slice.reduce((acc, item) => acc + item.price, 0) / 20;
             const current = historical[i];
             const prev = historical[i - 1];
 
-            // Señal de Compra: El precio cruza de abajo hacia arriba la SMA20
+            // Buy Signal: Price crosses above the SMA20
             if (!position && prev.price <= sma20 && current.price > sma20) {
                 position = {
                     entryDate: current.date,
                     entryPrice: current.price
                 };
             }
-            // Señal de Venta: El precio cae por debajo de la SMA20 o llegamos al final del periodo
+            // Sell Signal: Price drops below the SMA20 or reached the end of the period
             else if (position && ((prev.price >= sma20 && current.price < sma20) || i === historical.length - 1)) {
                 const exitPrice = current.price;
                 const shares = currentCapital / position.entryPrice;
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             finalCapital: currentCapital,
             totalReturnPct: totalReturnPct,
             winRatePct: winRatePct,
-            trades: trades.reverse() // Muestra las operaciones más recientes primero
+            trades: trades.reverse() // Display most recent trades first
         };
     }
 
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (rawHistoricalData.length === 0) return;
 
-            // Filtro dinámico por fechas
+            // Dynamic date filtering
             const startDateVal = startDateInput?.value;
             const endDateVal = endDateInput?.value;
 
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const currentPrice = prices[prices.length - 1];
             const prevPrice = prices.length > 1 ? prices[prices.length - 2] : currentPrice;
 
-            // 1. KPI Precio Actual
+            // 1. Current Price KPI
             const priceDiff = currentPrice - prevPrice;
             const pctDiff = prevPrice !== 0 ? ((priceDiff / prevPrice) * 100).toFixed(2) : "0.00";
             const priceElem = document.getElementById('currentPrice');
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 priceElem.innerHTML = `€${currentPrice.toFixed(3)} <span class="badge ${priceDiff >= 0 ? 'bg-success' : 'bg-danger'}">${priceDiff >= 0 ? '+' : ''}${pctDiff}%</span>`;
             }
 
-            // 2. Volatilidad e Indicadores Estadísticos
+            // 2. Volatility & Statistical Indicators
             const forecastDays = parseInt(document.getElementById('forecastDays')?.value || '30');
             let returns = [];
             for (let i = 1; i < prices.length; i++) {
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const bollUpper = sma20 + (2 * stdDev);
             const bollLower = sma20 - (2 * stdDev);
 
-            // Modelos de Pronóstico
+            // Forecasting Models
             const mcPrice = currentPrice * Math.exp((meanReturn - variance / 2) * forecastDays);
             const mcTrendPct = ((mcPrice - currentPrice) / currentPrice) * 100;
             
@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setText('bollLower', `€${bollLower.toFixed(3)}`);
             setText('macdValue', (currentPrice - sma20).toFixed(3));
 
-            // Comparativa Monte Carlo vs Red Neuronal
+            // Monte Carlo vs Neural Network Comparison
             setText('mcPrice', `€${mcPrice.toFixed(3)}`);
             setText('mcTrend', `${mcTrendPct >= 0 ? '+' : ''}${mcTrendPct.toFixed(2)}%`);
             setText('nnPrice', `€${nnPrice.toFixed(3)}`);
@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setText('bearishProb', isBullish ? '25%' : '60%');
             setText('neutralProb', '15%');
 
-            // Indicador de Señal
+            // Signal Indicator
             const signalText = document.getElementById('signalText');
             const signalDetails = document.getElementById('signalDetails');
             if (signalText) {
@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 signalDetails.textContent = `Monte Carlo: ${mcTrendPct.toFixed(2)}% | NN: ${nnTrendPct.toFixed(2)}%`;
             }
 
-            // Tabla de Señales
+            // Signals Table
             const signalsBody = document.getElementById('signalsBody');
             if (signalsBody) {
                 signalsBody.innerHTML = `
@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
             }
 
-            // Ejecución y renderizado de múltiples operaciones de Backtesting
+            // Execution and rendering of multiple backtesting trades
             const backtest = runStrategyBacktest(filtered);
             setText('btFinalCapital', `€${backtest.finalCapital.toFixed(2)}`);
             setText('btReturn', `${backtest.totalReturnPct >= 0 ? '+' : ''}${backtest.totalReturnPct.toFixed(2)}%`);
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // 4. Composite Signal Score
                 const macdVal = currentPrice - sma20;
-                const rsiVal = 56.4; // Estimado o dinámico si se dispone de él
+                const rsiVal = 56.4; // Estimated or dynamic if available
                 const scoreValue = RiskAnalytics.getSignalScore(currentPrice, sma20, rsiVal, macdVal, 0, mcTrendPct);
                 const scoreElem = document.getElementById('score-metric');
                 if (scoreElem) scoreElem.textContent = scoreValue + ' / 100';
@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             // -------------------------------------------
 
-            // Renderizado de gráficos con resplandor glow y MACD con líneas
+            // Chart rendering with glow effect and MACD lines
             if (window.stockChart) {
                 window.stockChart.renderAll(filtered, forecastDays, { mcTrendPct });
             }
