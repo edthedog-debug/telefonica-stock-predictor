@@ -8,7 +8,8 @@ python3 -c "
 import urllib.request
 import json
 import time
-from datetime import datetime
+import os
+from datetime import datetime, timezone
 
 # Timestamp for January 1, 2025 (1735689600)
 url = f'https://query1.finance.yahoo.com/v8/finance/chart/TEF.MC?period1=1735689600&period2={int(time.time())}&interval=1d'
@@ -24,22 +25,23 @@ try:
         historical = []
         for ts, price in zip(timestamps, closes):
             if price is not None:
-                date_str = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d')
+                date_str = datetime.fromtimestamp(ts, timezone.utc).strftime('%Y-%m-%d')
                 historical.append({'date': date_str, 'price': round(price, 3)})
         
         out_data = {
-            'lastUpdated': datetime.utcnow().strftime('%Y-%m-%d'),
+            'lastUpdated': datetime.now(timezone.utc).strftime('%Y-%m-%d'),
             'status': 'Autoupdate Active (Real BME Market Data since 2025)',
             'modelMetrics': {
                 'ticker': 'TEF.MC (BME)',
                 'exchange': 'BME Exchange',
                 'currency': 'EUR (€)',
-                'dataProvider': 'Google / Yahoo Finance API',
+                'dataProvider': 'Yahoo Finance API',
                 'architecture': 'Monte Carlo + Neural Network'
             },
             'historicalPrices': historical
         }
         
+        os.makedirs('data', exist_ok=True)
         with open('data/predictions.json', 'w') as f:
             json.dump(out_data, f, indent=2)
             
