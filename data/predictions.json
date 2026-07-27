@@ -5,7 +5,7 @@
     "ticker": "TEF.MC (BME)",
     "exchange": "BME Exchange",
     "currency": "EUR (\u20ac)",
-    "dataProvider": "Google / Yahoo Finance API",
+    "dataProvider": "Yahoo Finance API",
     "architecture": "Monte Carlo + Neural Network"
   },
   "historicalPrices": [
