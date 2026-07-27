@@ -117,6 +117,58 @@
             </div>
         </div>
         
+        <!-- ADVANCED RISK ANALYTICS SECTION -->
+        <div class="row mt-4" id="risk-analytics-container">
+            <div class="col-12 mb-3">
+                <h4><i class="bi bi-shield-check"></i> Quantitative Risk Metrics</h4>
+            </div>
+            
+            <!-- Value at Risk Card -->
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card shadow-sm h-100 border-danger border-start border-4">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted text-uppercase">Value at Risk (95%)</h6>
+                        <h3 class="font-weight-bold text-danger mt-2" id="var-metric">--</h3>
+                        <small class="text-muted">Expected 30-day max loss</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Max Drawdown Card -->
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card shadow-sm h-100 border-warning border-start border-4">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted text-uppercase">Max Drawdown</h6>
+                        <h3 class="font-weight-bold text-warning mt-2" id="drawdown-metric">--</h3>
+                        <small class="text-muted">Historical peak-to-trough drop</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sharpe Ratio Card -->
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card shadow-sm h-100 border-primary border-start border-4">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted text-uppercase">Sharpe Ratio</h6>
+                        <h3 class="font-weight-bold text-primary mt-2" id="sharpe-metric">--</h3>
+                        <small class="text-muted">Risk-adjusted return</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Signal Score Card -->
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card shadow-sm h-100 border-success border-start border-4">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted text-uppercase">Signal Score</h6>
+                        <h3 class="font-weight-bold text-success mt-2" id="score-metric">-- / 100</h3>
+                        <small class="text-muted">Multi-indicator strength</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- END ADVANCED RISK ANALYTICS SECTION -->
+        
         <!-- Signals and Stats Row -->
         <div class="row mt-4">
             <div class="col-md-6">
@@ -195,6 +247,7 @@
     <script src="assets/js/neural-network.js"></script>
     <script src="assets/js/data-service.js"></script>
     <script src="assets/js/charts.js"></script>
+    <script type="module" src="assets/js/analytics.js"></script>
     <script src="assets/js/dashboard.js"></script>
 </body>
 <script data-goatcounter="https://edthedog-debug6.goatcounter.com/count"
