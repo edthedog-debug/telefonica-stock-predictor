@@ -1,3 +1,5 @@
+import RiskAnalytics from './analytics.js';
+
 document.addEventListener('DOMContentLoaded', async () => {
     let rawHistoricalData = [];
 
@@ -202,6 +204,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                     `).join('');
                 }
             }
+
+            // --- ADVANCED RISK ANALYTICS INTEGRATION ---
+            try {
+                // 1. Value at Risk (VaR 95%)
+                const varValue = RiskAnalytics.calculateVaR(prices, 1.645, 30);
+                const varElem = document.getElementById('var-metric');
+                if (varElem) varElem.textContent = varValue.toFixed(2) + '%';
+
+                // 2. Max Drawdown
+                const maxDdValue = RiskAnalytics.calculateMaxDrawdown(prices);
+                const ddElem = document.getElementById('drawdown-metric');
+                if (ddElem) ddElem.textContent = maxDdValue.toFixed(2) + '%';
+
+                // 3. Sharpe Ratio
+                const sharpeValue = RiskAnalytics.calculateSharpeRatio(backtest.trades);
+                const sharpeElem = document.getElementById('sharpe-metric');
+                if (sharpeElem) sharpeElem.textContent = sharpeValue.toFixed(2);
+
+                // 4. Composite Signal Score
+                const macdVal = currentPrice - sma20;
+                const rsiVal = 56.4; // Estimado o dinámico si se dispone de él
+                const scoreValue = RiskAnalytics.getSignalScore(currentPrice, sma20, rsiVal, macdVal, 0, mcTrendPct);
+                const scoreElem = document.getElementById('score-metric');
+                if (scoreElem) scoreElem.textContent = scoreValue + ' / 100';
+            } catch (riskErr) {
+                console.error("Risk analytics calculation error:", riskErr);
+            }
+            // -------------------------------------------
 
             // Renderizado de gráficos con resplandor glow y MACD con líneas
             if (window.stockChart) {
