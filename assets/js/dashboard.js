@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // 4. Composite Signal Score
                 const macdVal = currentPrice - sma20;
-                const rsiVal = 56.4; // Estimated or dynamic if available
+                const rsiVal = 56.4;
                 const scoreValue = RiskAnalytics.getSignalScore(currentPrice, sma20, rsiVal, macdVal, 0, mcTrendPct);
                 const scoreElem = document.getElementById('score-metric');
                 if (scoreElem) scoreElem.textContent = scoreValue + ' / 100';
@@ -234,8 +234,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             // -------------------------------------------
 
             // Chart rendering with glow effect and MACD lines
-            if (window.stockChart) {
+            if (window.stockChart && typeof window.stockChart.renderAll === 'function') {
                 window.stockChart.renderAll(filtered, forecastDays, { mcTrendPct });
+            }
+
+            if (typeof window.renderGauge === 'function') {
+                window.renderGauge(mcTrendPct);
             }
 
         } catch (err) {
