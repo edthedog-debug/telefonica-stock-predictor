@@ -1,26 +1,196 @@
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card text-center p-3 shadow-sm">
-            <h6 class="text-muted">Value at Risk (VaR 95%)</h6>
-            <h3 id="var-metric" class="fw-bold text-danger">-</h3>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telefonica Stock Predictor & Quantitative Analytics</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="bg-light">
+
+    <div class="container py-4">
+        <!-- Header Section -->
+        <header class="pb-3 mb-4 border-bottom d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 fw-bold text-dark">Telefonica Stock Predictor</h1>
+                <p class="text-muted m-0">Advanced quantitative market analysis and machine learning forecasting</p>
+            </div>
+            <div>
+                <button id="updateBtn" class="btn btn-primary btn-sm">Refresh Data</button>
+            </div>
+        </header>
+
+        <!-- Date Filter & Forecast Controls -->
+        <div class="card shadow-sm mb-4 p-3">
+            <div class="row align-items-center">
+                <div class="col-md-4 mb-2 mb-md-0">
+                    <label for="startDate" class="form-label fw-semibold small">Start Date</label>
+                    <input type="date" id="startDate" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-4 mb-2 mb-md-0">
+                    <label for="endDate" class="form-label fw-semibold small">End Date</label>
+                    <input type="date" id="endDate" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-4">
+                    <label for="forecastDays" class="form-label fw-semibold small">Forecast Horizon (Days)</label>
+                    <select id="forecastDays" class="form-select form-select-sm">
+                        <option value="15">15 Days</option>
+                        <option value="30" selected>30 Days</option>
+                        <option value="60">60 Days</option>
+                        <option value="90">90 Days</option>
+                    </select>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center p-3 shadow-sm">
-            <h6 class="text-muted">Max Drawdown</h6>
-            <h3 id="drawdown-metric" class="fw-bold text-warning">-</h3>
+
+        <!-- Key Performance Indicators (KPIs) -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3 mb-md-0">
+                <div class="card text-center p-3 shadow-sm border-0">
+                    <h6 class="text-muted small">Current Price</h6>
+                    <h3 id="currentPrice" class="fw-bold mb-0">-</h3>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+                <div class="card text-center p-3 shadow-sm border-0">
+                    <h6 class="text-muted small">Annualized Volatility</h6>
+                    <h3 id="volatility" class="fw-bold mb-0">-</h3>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+                <div class="card text-center p-3 shadow-sm border-0">
+                    <h6 class="text-muted small">Expected Return</h6>
+                    <h3 id="expectedReturn" class="fw-bold mb-0">-</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center p-3 shadow-sm border-0">
+                    <h6 class="text-muted small">MACD Value</h6>
+                    <h3 id="macdValue" class="fw-bold mb-0">-</h3>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center p-3 shadow-sm">
-            <h6 class="text-muted">Sharpe Ratio</h6>
-            <h3 id="sharpe-metric" class="fw-bold text-primary">-</h3>
+
+        <!-- Advanced Risk Analytics Metrics -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3 mb-md-0">
+                <div class="card text-center p-3 shadow-sm border-0">
+                    <h6 class="text-muted small">Value at Risk (VaR 95%)</h6>
+                    <h3 id="var-metric" class="fw-bold text-danger mb-0">-</h3>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+                <div class="card text-center p-3 shadow-sm border-0">
+                    <h6 class="text-muted small">Max Drawdown</h6>
+                    <h3 id="drawdown-metric" class="fw-bold text-warning mb-0">-</h3>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+                <div class="card text-center p-3 shadow-sm border-0">
+                    <h6 class="text-muted small">Sharpe Ratio</h6>
+                    <h3 id="sharpe-metric" class="fw-bold text-primary mb-0">-</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center p-3 shadow-sm border-0">
+                    <h6 class="text-muted small">Composite Signal Score</h6>
+                    <h3 id="score-metric" class="fw-bold text-success mb-0">-</h3>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center p-3 shadow-sm">
-            <h6 class="text-muted">Composite Signal Score</h6>
-            <h3 id="score-metric" class="fw-bold text-success">-</h3>
+
+        <!-- Main Chart Section -->
+        <div class="card shadow-sm mb-4 p-4 border-0">
+            <h5 class="card-title mb-3">Historical Prices & Technical Indicators</h5>
+            <div style="position: relative; height: 380px; width: 100%;">
+                <canvas id="stockChartCanvas"></canvas>
+            </div>
         </div>
+
+        <!-- Models & Forecasting Comparison -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4 mb-md-0">
+                <div class="card shadow-sm p-4 border-0 h-100">
+                    <h5 class="card-title mb-3">Machine Learning vs Monte Carlo</h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Monte Carlo Price (Median)</span>
+                            <strong id="medianPrice">-</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>95% Confidence Interval</span>
+                            <strong id="confidenceInterval">-</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Bollinger Upper Band</span>
+                            <strong id="bollUpper">-</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Bollinger Lower Band</span>
+                            <strong id="bollLower">-</strong>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm p-4 border-0 h-100 text-center d-flex flex-column justify-content-center">
+                    <h5 class="card-title mb-3" id="consensusLabel">Consensus (30 Days)</h5>
+                    <h2 id="consensus" class="display-5 fw-bold mb-3">-</h2>
+                    <p id="signalDetails" class="text-muted m-0">Analyzing market momentum...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backtesting Performance Section -->
+        <div class="card shadow-sm mb-4 p-4 border-0">
+            <h5 class="card-title mb-3">Strategy Backtesting (SMA20 Crossover)</h5>
+            <div class="row text-center mb-3">
+                <div class="col-md-4">
+                    <span class="text-muted small">Final Capital (Initial €10,000)</span>
+                    <h4 id="btFinalCapital" class="fw-bold">-</h4>
+                </div>
+                <div class="col-md-4">
+                    <span class="text-muted small">Total Return</span>
+                    <h4 id="btReturn" class="fw-bold">-</h4>
+                </div>
+                <div class="col-md-4">
+                    <span class="text-muted small">Win Rate</span>
+                    <h4 id="btWinRate" class="fw-bold">-</h4>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle small">
+                    <thead>
+                        <tr>
+                            <th>Entry Date</th>
+                            <th>Exit Date</th>
+                            <th>Entry Price</th>
+                            <th>Exit Price</th>
+                            <th>Profit (€)</th>
+                            <th>Profit (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="btTradesBody">
+                        <tr><td colspan="6" class="text-center text-muted">Loading backtest trades...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center py-3 text-muted small border-top">
+            Telefonica Stock Predictor &copy; 2026. Built for quantitative portfolio assessment.
+        </footer>
     </div>
-</div>
+
+    <!-- Script Imports (Dashboard loaded as module to support analytics import) -->
+    <script src="assets/js/neural-network.js"></script>
+    <script src="assets/js/data-service.js"></script>
+    <script src="assets/js/charts.js"></script>
+    <script type="module" src="assets/js/dashboard.js"></script>
+</body>
+</html>
