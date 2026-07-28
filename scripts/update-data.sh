@@ -71,20 +71,29 @@ try:
 
         # Process new API data
         for i, ts in enumerate(timestamps):
-            price = None
+
+            # Determine price priority: adjclose → close → fallback
             if i < len(adjclose) and adjclose[i] is not None:
                 price = adjclose[i]
+                source = 'adjclose'
             elif i < len(closes) and closes[i] is not None:
                 price = closes[i]
+                source = 'close'
+            else:
+                price = None
+                source = None
 
             date_str = datetime.fromtimestamp(ts, timezone.utc).strftime('%Y-%m-%d')
 
+            # If adjclose or close exists
             if price is not None:
                 historical_map[date_str] = {
                     'date': date_str,
                     'price': round(price, 3),
-                    'source': 'Yahoo Finance'
+                    'source': source
                 }
+
+            # If neither exists → fallback
             elif regular_price is not None and date_str not in historical_map:
                 historical_map[date_str] = {
                     'date': date_str,
