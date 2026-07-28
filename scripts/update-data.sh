@@ -21,26 +21,19 @@ try:
         timestamps = result.get('timestamp', [])
         closes = result['indicators']['quote'][0].get('close', [])
 
-        # NEW FIX: Always fetch last price even if API returns None
-        meta = result.get('meta', {})
-        fallback_price = meta.get('regularMarketPrice')
-
+        # FIX: Use ONLY close values, ignore regularMarketPrice completely
         historical = []
         for ts, price in zip(timestamps, closes):
-            if price is None:
-                price = fallback_price
             if price is not None:
                 date_str = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d')
                 historical.append({'date': date_str, 'price': round(price, 3)})
 
-        # NEW FIX: Ensure last day is included even if missing in timestamps
-        if timestamps:
+        # FIX: Last day also uses ONLY close
+        if timestamps and closes[-1] is not None:
             last_ts = timestamps[-1]
             last_date = datetime.utcfromtimestamp(last_ts).strftime('%Y-%m-%d')
-            last_price = closes[-1] if closes[-1] is not None else fallback_price
-
-            if last_price is not None:
-                historical[-1] = {'date': last_date, 'price': round(last_price, 3)}
+            last_price = closes[-1]
+            historical[-1] = {'date': last_date, 'price': round(last_price, 3)}
 
         out_data = {
             'lastUpdated': datetime.utcnow().strftime('%Y-%m-%d'),
