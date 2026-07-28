@@ -14,6 +14,7 @@ from datetime import datetime
 # Load existing predictions.json if available
 existing_data = {}
 existing_prices = {}
+existing_sources = {}  # <-- FIX: ensure this dictionary always exists
 
 if os.path.exists('data/predictions.json'):
     try:
@@ -21,9 +22,11 @@ if os.path.exists('data/predictions.json'):
             existing_data = json.load(f)
             for item in existing_data.get('historicalPrices', []):
                 existing_prices[item['date']] = item['price']
+                existing_sources[item['date']] = item.get('source', 'close')
     except:
         existing_data = {}
         existing_prices = {}
+        existing_sources = {}  # <-- FIX: reset this too if file is empty or invalid
 
 # Timestamp for January 1, 2025 (1735689600)
 url = f'https://query1.finance.yahoo.com/v8/finance/chart/TEF.MC?period1=1735689600&period2={int(time.time())}&interval=1d'
@@ -53,14 +56,14 @@ try:
             # If this date already exists and now we have a real close → replace it
             if date_str in existing_prices:
                 old_price = existing_prices[date_str]
+                old_source = existing_sources.get(date_str, "fallback")
+
                 if close_price is not None:
                     price = round(close_price, 3)
                     source = "close"
                 else:
                     price = old_price
-                    # Keep previous source if it existed
-                    # (fallback remains fallback until a real close arrives)
-                    source = "fallback"
+                    source = old_source
 
             historical.append({
                 'date': date_str,
