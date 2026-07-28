@@ -8,7 +8,22 @@ python3 -c "
 import urllib.request
 import json
 import time
+import os
 from datetime import datetime
+
+# Load existing predictions.json if available
+existing_data = {}
+existing_prices = {}
+
+if os.path.exists('data/predictions.json'):
+    try:
+        with open('data/predictions.json', 'r') as f:
+            existing_data = json.load(f)
+            for item in existing_data.get('historicalPrices', []):
+                existing_prices[item['date']] = item['price']
+    except:
+        existing_data = {}
+        existing_prices = {}
 
 # Timestamp for January 1, 2025 (1735689600)
 url = f'https://query1.finance.yahoo.com/v8/finance/chart/TEF.MC?period1=1735689600&period2={int(time.time())}&interval=1d'
@@ -20,20 +35,32 @@ try:
         result = data['chart']['result'][0]
         timestamps = result.get('timestamp', [])
         closes = result['indicators']['quote'][0].get('close', [])
+        regular_price = result['meta'].get('regularMarketPrice')
 
-        # FIX: Use ONLY close values, ignore regularMarketPrice completely
         historical = []
-        for ts, price in zip(timestamps, closes):
-            if price is not None:
-                date_str = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d')
-                historical.append({'date': date_str, 'price': round(price, 3)})
 
-        # FIX: Last day also uses ONLY close
-        if timestamps and closes[-1] is not None:
-            last_ts = timestamps[-1]
-            last_date = datetime.utcfromtimestamp(last_ts).strftime('%Y-%m-%d')
-            last_price = closes[-1]
-            historical[-1] = {'date': last_date, 'price': round(last_price, 3)}
+        for ts, close_price in zip(timestamps, closes):
+            date_str = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d')
+
+            # If close exists → use it
+            if close_price is not None:
+                price = round(close_price, 3)
+
+            else:
+                # If close is missing → fallback to regularMarketPrice
+                price = round(regular_price, 3)
+
+            # If this date already exists and now we have a real close → replace it
+            if date_str in existing_prices:
+                old_price = existing_prices[date_str]
+                # Replace only if new price is a real close (not fallback)
+                if close_price is not None:
+                    price = round(close_price, 3)
+                else:
+                    # Keep existing if it was already stored
+                    price = old_price
+
+            historical.append({'date': date_str, 'price': price})
 
         out_data = {
             'lastUpdated': datetime.utcnow().strftime('%Y-%m-%d'),
@@ -52,6 +79,7 @@ try:
             json.dump(out_data, f, indent=2)
 
         print(f'Successfully downloaded {len(historical)} historical trading days since Jan 2025.')
+
 except Exception as e:
     print(f'Error fetching market data: {e}')
 "
