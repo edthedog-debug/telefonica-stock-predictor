@@ -2002,7 +2002,12 @@
     {
       "date": "2026-07-27",
       "price": 3.657,
-      "source": "fallback"
+      "source": "adjclose"
+    },
+    {
+      "date": "2026-07-28",
+      "price": 3.726,
+      "source": "adjclose"
     }
   ]
 }
