@@ -11,12 +11,12 @@ import time
 import os
 from datetime import datetime, timezone
 
-# Load existing predictions.json if available and not empty
+# Load existing predictions.json if available (even if empty)
 existing_prices = {}
 existing_sources = {}
 
 file_path = 'data/predictions.json'
-if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+if os.path.exists(file_path):
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             existing_data = json.load(f)
@@ -26,7 +26,9 @@ if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
                         existing_prices[item['date']] = item['price']
                         existing_sources[item['date']] = item.get('source', 'close')
     except Exception as e:
-        print(f'Warning: Could not parse existing predictions.json ({e}), starting fresh.')
+        print(f'Warning: predictions.json is empty or invalid ({e}), starting fresh.')
+        existing_prices = {}
+        existing_sources = {}
 
 # Ensure a wide time window including the end of the current day in UTC
 now_utc = datetime.now(timezone.utc)
@@ -36,7 +38,7 @@ url = f'https://query1.finance.yahoo.com/v8/finance/chart/TEF.MC?period1=1735689
 req = urllib.request.Request(
     url, 
     headers={
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0',
         'Accept': 'application/json'
     }
 )
@@ -59,7 +61,7 @@ try:
 
         historical_map = {}
 
-        # First, load existing historical prices into our working map
+        # Load existing data into map
         for date_str, price in existing_prices.items():
             historical_map[date_str] = {
                 'date': date_str,
@@ -67,7 +69,7 @@ try:
                 'source': existing_sources.get(date_str, 'close')
             }
 
-        # Process new data from API
+        # Process new API data
         for i, ts in enumerate(timestamps):
             price = None
             if i < len(adjclose) and adjclose[i] is not None:
@@ -90,7 +92,7 @@ try:
                     'source': 'fallback'
                 }
 
-        # Sort historical prices chronologically by date
+        # Sort by date
         sorted_historical = sorted(list(historical_map.values()), key=lambda x: x['date'])
 
         out_data = {
