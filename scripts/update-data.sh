@@ -42,25 +42,31 @@ try:
         for ts, close_price in zip(timestamps, closes):
             date_str = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d')
 
-            # If close exists → use it
+            # Determine price and source
             if close_price is not None:
                 price = round(close_price, 3)
-
+                source = "close"
             else:
-                # If close is missing → fallback to regularMarketPrice
                 price = round(regular_price, 3)
+                source = "fallback"
 
             # If this date already exists and now we have a real close → replace it
             if date_str in existing_prices:
                 old_price = existing_prices[date_str]
-                # Replace only if new price is a real close (not fallback)
                 if close_price is not None:
                     price = round(close_price, 3)
+                    source = "close"
                 else:
-                    # Keep existing if it was already stored
                     price = old_price
+                    # Keep previous source if it existed
+                    # (fallback remains fallback until a real close arrives)
+                    source = "fallback"
 
-            historical.append({'date': date_str, 'price': price})
+            historical.append({
+                'date': date_str,
+                'price': price,
+                'source': source
+            })
 
         out_data = {
             'lastUpdated': datetime.utcnow().strftime('%Y-%m-%d'),
