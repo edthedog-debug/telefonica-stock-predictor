@@ -20,13 +20,28 @@ try:
         result = data['chart']['result'][0]
         timestamps = result.get('timestamp', [])
         closes = result['indicators']['quote'][0].get('close', [])
-        
+
+        # NEW FIX: Always fetch last price even if API returns None
+        meta = result.get('meta', {})
+        fallback_price = meta.get('regularMarketPrice')
+
         historical = []
         for ts, price in zip(timestamps, closes):
+            if price is None:
+                price = fallback_price
             if price is not None:
                 date_str = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d')
                 historical.append({'date': date_str, 'price': round(price, 3)})
-        
+
+        # NEW FIX: Ensure last day is included even if missing in timestamps
+        if timestamps:
+            last_ts = timestamps[-1]
+            last_date = datetime.utcfromtimestamp(last_ts).strftime('%Y-%m-%d')
+            last_price = closes[-1] if closes[-1] is not None else fallback_price
+
+            if last_price is not None:
+                historical[-1] = {'date': last_date, 'price': round(last_price, 3)}
+
         out_data = {
             'lastUpdated': datetime.utcnow().strftime('%Y-%m-%d'),
             'status': 'Autoupdate Active (Real BME Market Data since 2025)',
@@ -39,10 +54,10 @@ try:
             },
             'historicalPrices': historical
         }
-        
+
         with open('data/predictions.json', 'w') as f:
             json.dump(out_data, f, indent=2)
-            
+
         print(f'Successfully downloaded {len(historical)} historical trading days since Jan 2025.')
 except Exception as e:
     print(f'Error fetching market data: {e}')
