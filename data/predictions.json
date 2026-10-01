@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-09-30",
+  "lastUpdated": "2026-10-01",
   "status": "Autoupdate Active (Real BME Market Data since 2025)",
   "modelMetrics": {
     "ticker": "TEF.MC (BME)",
@@ -2237,6 +2237,11 @@
     {
       "date": "2026-09-30",
       "price": 3.338,
+      "source": "adjclose"
+    },
+    {
+      "date": "2026-10-01",
+      "price": 3.279,
       "source": "adjclose"
     }
   ]
