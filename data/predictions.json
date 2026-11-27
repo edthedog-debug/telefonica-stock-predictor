@@ -2442,6 +2442,11 @@
     {
       "date": "2026-11-26",
       "price": 3.382,
+      "source": "adjclose"
+    },
+    {
+      "date": "2026-11-27",
+      "price": 3.444,
       "source": "fallback"
     }
   ]
